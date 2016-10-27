@@ -1,5 +1,5 @@
 PROJECT_NAME = grosfs
-CC = g++ 
+CXX = g++ 
 ROOT_DIR = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 INC = $(ROOT_DIR)/include
 SRC = $(ROOT_DIR)/src
@@ -13,8 +13,11 @@ all: $(EXECUTABLES)
 
 SOURCES = $(FILES:%.cpp=$(SRC)/%.cpp)
 
-grosfs: 
-	$(CC) $(CFLAGS) -o $(PROJECT_NAME) $(SOURCES) 
+grosfs: $(SOURCES) 
+	$(CXX) $(CFLAGS) -o $(PROJECT_NAME) $(SOURCES) 
+
+run: $(PROJECT_NAME)
+	./$(PROJECT_NAME)
 
 clean:
 	/bin/rm -rf $(wildcard *.dSYM)
