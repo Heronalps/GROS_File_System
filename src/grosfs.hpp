@@ -6,6 +6,12 @@
 #ifndef __GROSFS_H_INCLUDED__   // if grosfs.h hasn't been included yet...
 #define __GROSFS_H_INCLUDED__   //   #define this so the compiler knows it has been included
 
+#include "../include/catch.hpp"
+
+#define EMULATOR_SIZE 65536  // 65 kb
+#define BLOCK_SIZE 512       // 512 b
+
+
 typedef struct _superblock {
   int fs_disk_size;        /* total size of disk, in bytes */
   int fs_block_size;       /* size of disk blocks, in bytes */
@@ -38,7 +44,7 @@ typedef struct _inode {
   time_t f_ctime;    /* time inode last modified */
   time_t f_mtime;    /* time file last modified */
   time_t f_atime;    /* time file last accessed */
-  int    f_link;     /* number of hard links to this file */
+  int    f_links;     /* number of hard links to this file */
   /**
    * Data blocks for file
    *    f_block[0-11] = direct data blocks
