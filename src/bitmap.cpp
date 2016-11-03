@@ -54,7 +54,7 @@ short is_bit_set(Bitmap *bm, int index) {
   }
   int byte = index / 8;
   int offset = index % 8;
-  return bm->buf[byte] & (1 << offset);
+  return (bm->buf[byte] & (1 << offset)) > 0;
 }
 
 /**
