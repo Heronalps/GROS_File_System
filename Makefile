@@ -6,7 +6,7 @@ SRC = $(ROOT_DIR)/src
 CFLAGS = -Wall -m32 -g -I$(INC) -I$(SRC)
 
 HEADERS = disk.hpp grosfs.hpp
-FILES = main.cpp disk.cpp
+FILES = main.cpp disk.cpp grosfs.cpp
 EXECUTABLES = $(PROJECT_NAME)
 
 all: $(EXECUTABLES)
