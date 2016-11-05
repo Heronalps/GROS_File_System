@@ -23,12 +23,14 @@ void make_fs( Disk * disk ) {
 }
 
 /*
- * allocate new inode
+ * allocate new inode from list ( rb tree ? )
  * */
 Inode new_inode( Disk * disk ) {
-//    for(int i = free_ilist; i < disk -> )
 }
 
+/*
+ * check if file has any hard links, else it's available for allocation
+ * */
 int has_links( Inode * inode ) {
     return inode -> f_acl > 1 ? 1 : 0;
 }

@@ -62,4 +62,9 @@ typedef struct _inode { // 102 bytes
     int     f_block[15];
 } Inode;
 
+void make_fs( Disk * disk );
+Inode new_inode( Disk * disk );
+int has_links( Inode * inode );
+Inode * find_free_inode( Disk * disk );
+
 #endif 
