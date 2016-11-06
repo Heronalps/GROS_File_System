@@ -68,3 +68,51 @@ int write_block( Disk * disk, int block_num, char * buf ) {
     return 0;
 }
 
+TEST_CASE( "Disk emulator can be accessed properly", "[disk]" ) {
+
+    Disk * disk = open_disk();
+    char buf[BLOCK_SIZE];
+
+    REQUIRE( disk -> size == EMULATOR_SIZE );
+    REQUIRE( disk -> mem != NULL );
+    REQUIRE( disk -> fp == NULL );
+
+    SECTION( "read_block will read out BLOCK_SIZE bytes" ) {
+        int ret = read_block( disk, 0, buf );
+        REQUIRE( ret == 0 );
+    }
+
+    SECTION( "read_block will fail on a negative block number" ) {
+        int ret = read_block( disk, -1, buf );
+        REQUIRE( ret != 0 );
+    }
+
+    SECTION( "read_block will fail on a block number that is out of range" ) {
+        int block_num = ( disk -> size / BLOCK_SIZE ) + 1;
+        int ret = read_block( disk, block_num, buf );
+        REQUIRE( ret != 0 );
+    }
+
+    SECTION( "write_block will write out BLOCK_SIZE bytes" ) {
+        int ret = write_block( disk, 0, buf );
+        REQUIRE( ret == 0 );
+    }
+
+    SECTION( "write_block will fail on a negative block number" ) {
+        int ret = write_block( disk, -1, buf );
+        REQUIRE( ret != 0 );
+    }
+
+    SECTION( "write_block will fail on a block number that is out of range" ) {
+        int block_num = ( disk -> size / BLOCK_SIZE ) + 1;
+        int ret = write_block( disk, block_num, buf );
+        REQUIRE( ret != 0 );
+    }
+}
+
+TEST_CASE( "Testing Catch", "[test]" ) {
+    REQUIRE( 1 == 1 );
+    REQUIRE( 2 == 2 );
+    //REQUIRE(3 == 2);
+}
+

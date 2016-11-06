@@ -7,16 +7,13 @@
 #ifndef __GROSFS_H_INCLUDED__   // if grosfs.h hasn't been included yet...
 #define __GROSFS_H_INCLUDED__   //   #define this so the compiler knows it has been included
 
-#include "../include/catch.hpp"
 #include "bitmap.hpp"
+#include "disk.hpp"
+#include "../include/catch.hpp"
 
 
-//#define EMULATOR_SIZE 1048576   // 1 Mb
-#define EMULATOR_SIZE 65536     // 65 kb
-#define BLOCK_SIZE    512       // 512 b
 
-#define DATA_BLOCKS   0.9       // 90% data blocks
-#define INODE_BLOCKS  0.1       // 10% inode blocks
+
 
 
 typedef struct _superblock {
@@ -64,7 +61,7 @@ typedef struct _inode { // 102 bytes
 } Inode;
 
 void make_fs( Disk * disk );
-Inode new_inode( Disk * disk );
+Inode * new_inode( Disk * disk );
 int has_links( Inode * inode );
 Inode * find_free_inode( Disk * disk );
 void free_inode( Disk * disk, Inode * inode);

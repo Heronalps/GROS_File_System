@@ -4,15 +4,15 @@
 
 #define CATCH_CONFIG_RUNNER
 
-#include "../include/catch.hpp"
 #include "grosfs.hpp"
+#include "../include/catch.hpp"
 
 
 int main( int argc, char * const argv[] ) {
     // global setup...
 
     int result = Catch::Session() . run( argc, argv );
-
+	//Disk *disk = open_disk();
     // global clean-up...
 
     return result;

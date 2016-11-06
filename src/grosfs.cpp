@@ -1,5 +1,4 @@
-#include "disk.hpp"
-
+#include "grosfs.hpp"
 /*
  * creates the superblock, free inode list, and free block list on disk
  * */
@@ -78,7 +77,7 @@ char * allocate_data_block( Disk *disk ) {
 /*
  * allocate new inode from list ( rb tree ? )
  * */
-Inode new_inode( Disk * disk ) {
+Inode * new_inode( Disk * disk ) {
 	Inode * inode 						= new Inode();
 	inode -> f_size						= 0;
 	inode -> f_uid						= 0;	//through system call??
@@ -92,6 +91,7 @@ Inode new_inode( Disk * disk ) {
 	Inode * free_inode = find_free_inode( disk );
 //	char * 	free_inode_addr = find_free_inode( disk );
 	memcpy( free_inode, inode, sizeof( Inode ) );
+	return inode;
 }
 
 /*
@@ -105,7 +105,7 @@ int has_links( Inode * inode ) {
 /*
  * Deallocate inode from free data list
  * */
-void free_data_block( Disk *disk, char * block ) {
+/*void free_data_block( Disk *disk, char * block ) {
 	char            buf[ BLOCK_SIZE ];
     Superblock *    superblock;
     
@@ -123,12 +123,12 @@ void free_data_block( Disk *disk, char * block ) {
 		}
 		block_group_count += superblock -> fs_block_size * superblock -> fs_block_size;
 	}
-}
+} */
 
 /*
  * Deallocate inode from free inode list
  * */
-void free_inode( Disk * disk, Inode * inode) {
+/*void free_inode( Disk * disk, Inode * inode) {
 //  deallocate data blocks
 	int i;
 	int direct_blocks_empty = 0;									//0 if data blocks don't go past direct blocks
@@ -145,7 +145,7 @@ void free_inode( Disk * disk, Inode * inode) {
 	//still need to loop through indirect blocks and free those
 	memset( inode, 0, sizeof( Inode ) );	//inode or disk[ inode ]?
 }
-
+*/
 
 
 // allocate inode  - single empty data block + size = 0
