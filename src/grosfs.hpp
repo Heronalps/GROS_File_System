@@ -8,6 +8,7 @@
 #define __GROSFS_H_INCLUDED__   //   #define this so the compiler knows it has been included
 
 #include "../include/catch.hpp"
+#include "bitmap.hpp"
 
 
 //#define EMULATOR_SIZE 1048576   // 1 Mb
@@ -28,8 +29,8 @@ typedef struct _superblock {
     int     fs_num_used_blocks;  /* number of used blocks */
     int     fs_num_block_groups; /* number of block groups */
 
-    int     free_data_list;      /* pointer to start of free data list */
-    int     free_inode_list;     /* pointer to free inode list */
+    char *     free_data_list;      /* pointer to start of free data list */
+    char *     free_inode_list;     /* pointer to free inode list */
 } Superblock;
 
 typedef struct _inode { // 102 bytes
@@ -59,12 +60,15 @@ typedef struct _inode { // 102 bytes
      *    f_block[13]   = doubly indirect data blocks
      *    f_block[14]   = triply indirect data blocks
      */
-    int     f_block[15];
+    char *  f_block[15];
 } Inode;
 
 void make_fs( Disk * disk );
 Inode new_inode( Disk * disk );
 int has_links( Inode * inode );
 Inode * find_free_inode( Disk * disk );
+void free_inode( Disk * disk, Inode * inode);
+char * allocate_data_block( Disk *disk );
+void free_data_block( Disk *disk, int block );
 
 #endif 
