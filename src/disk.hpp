@@ -8,8 +8,8 @@
 //#include "grosfs.hpp"
 #include "../include/catch.hpp"
 
-#define EMULATOR_SIZE 65536     // 65 kb
-#define BLOCK_SIZE    512       // 512 b
+#define EMULATOR_SIZE 4194304   // 4 mb
+#define BLOCK_SIZE    4096      // 4 kb
 
 #define DATA_BLOCKS   0.9       // 90% data blocks
 #define INODE_BLOCKS  0.1       // 10% inode blocks

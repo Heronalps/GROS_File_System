@@ -8,14 +8,19 @@
 #ifndef __GROSFS_H_INCLUDED__   // if grosfs.h hasn't been included yet...
 #define __GROSFS_H_INCLUDED__   //   #define this so the compiler knows it has been included
 
+
+#define EMULATOR_SIZE 4194304   // 4 mb
+#define BLOCK_SIZE    4096      // 4 kb
+
+#define DATA_BLOCKS   0.9       // 90% data blocks
+#define INODE_BLOCKS  0.1       // 10% inode blocks
+
+// the space at the end of the superblock data up until the end of the block
+#define SB_ILIST_SIZE (BLOCK_SIZE - 9*sizeof(int))
+
 #include "bitmap.hpp"
 #include "disk.hpp"
 #include "../include/catch.hpp"
-
-
-
-
-
 
 typedef struct _superblock {
     int     fs_disk_size;        /* total size of disk, in bytes */
@@ -27,11 +32,14 @@ typedef struct _superblock {
     int     fs_num_used_blocks;  /* number of used blocks */
     int     fs_num_block_groups; /* number of block groups */
 
-    char *     free_data_list;      /* pointer to start of free data list */
-    char *     free_inode_list;     /* pointer to free inode list */
+    //char *     free_data_list;      /* pointer to start of free data list */
+    int first_data_block;
+    int free_inodes[SB_ILIST_SIZE];
+    //char *     free_inode_list;     /* pointer to free inode list */
 } Superblock;
 
-typedef struct _inode { // 102 bytes
+typedef struct _inode { // 106 bytes
+    int     f_inode_num; /* the inode number */
     int     f_size;     /* file size, in bytes */
     int     f_uid;      /* uid of owner */
     int     f_gid;      /* gid of owner group */
@@ -66,6 +74,7 @@ Inode * new_inode( Disk * disk );
 int has_links( Inode * inode );
 Inode * find_free_inode( Disk * disk );
 void free_inode( Disk * disk, Inode * inode);
+int deallocate_inode(Disk *disk, Inode *inode);
 char * allocate_data_block( Disk *disk );
 void free_data_block( Disk *disk, int block );
 

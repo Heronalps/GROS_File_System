@@ -1,8 +1,10 @@
 #include "grosfs.hpp"
+
 /*
  * creates the superblock, free inode list, and free block list on disk
  * */
 void make_fs( Disk * disk ) {
+    int i;
 //    cast to / from ( Superblock * )
     Superblock * superblock             = new Superblock();
     superblock -> fs_disk_size          = disk -> size;
@@ -11,43 +13,82 @@ void make_fs( Disk * disk ) {
     int num_blocks                      = superblock -> fs_disk_size / superblock -> fs_block_size;             // 128 total blocks
     int num_inode_blocks                = ceil( num_blocks * INODE_BLOCKS );                                    // 13 total blocks
     int inode_per_block                 = floor( superblock -> fs_block_size / superblock -> fs_inode_size );
-    superblock -> fs_num_blocks         = floor( num_blocks * DATA_BLOCKS );                                    // # blocks for data ( 115 )
-    superblock -> fs_num_inodes         = num_inode_blocks * inode_per_block;                                   // # blocks for inodes ( 13 ) * # inodes per block ( 5 ) = 65 inodes
+    superblock -> fs_num_blocks         = floor( num_blocks * DATA_BLOCKS ); // # blocks for data ( 115 )
+    superblock -> fs_num_inodes         = num_inode_blocks * inode_per_block; // # blocks for inodes ( 13 ) * # inodes per block ( 5 ) = 65 inodes
     superblock -> fs_num_block_groups   = ceil( superblock -> fs_num_blocks / superblock -> fs_block_size );    // 1 block group ( 512 - 115 = 397 unused bits )
     superblock -> fs_num_used_inodes    = 0;
     superblock -> fs_num_used_blocks    = 0;
 
-    superblock -> free_data_list         = &disk -> mem[ sizeof( Superblock ) + ( superblock -> fs_block_size ) * num_inode_blocks ];    
-    superblock -> free_inode_list         = &disk -> mem[ sizeof( Superblock ) ];
-    int i;
-    int block_group_count = 0;                                                                                    //var to get location of each new bitmap
+    // the free_data_list starts at the first block after the superblock and all of the inodes
+    superblock -> first_data_block      = 1 /* Superblock */ + num_inode_blocks /* number of blocks dedicated to inodes */; 
+    //superblock -> free_inode_list       = &disk -> mem[ sizeof( Superblock ) ];
+    for (i=0; i<SB_ILIST_SIZE; i++) {
+      superblock->free_inodes[i] = i;
+    }
+
+    int block_group_count               = 0; //var to get location of each new bitmap
+    int block_num;
+    char *buf;
     for ( i = 0; i < superblock -> fs_num_block_groups; i++ ) {
-        Bitmap *bitmap = init_bitmap( superblock -> fs_block_size, superblock -> free_data_list + block_group_count);
-        set_bit( bitmap, 0 );                                                                                    //first block is bitmap
+        block_num = superblock->first_data_block + i * BLOCK_SIZE;
+        buf = (char *)malloc(BLOCK_SIZE * sizeof(char));
+        Bitmap *bitmap = init_bitmap( superblock -> fs_block_size, buf); //superblock -> free_data_list + block_group_count);
+        set_bit( bitmap, 0 ); //first block is bitmap
         block_group_count += superblock -> fs_block_size * superblock -> fs_block_size;
+        write_block(disk, block_num, bitmap->buf);
+        free(buf);
     }
     
-  write_block(disk, 0, (char*) superblock);
+    write_block(disk, 0, (char*) superblock);
 }
 
 /*
  * search free inode list for available inode
  * */
 Inode * find_free_inode( Disk * disk ) {
+    int i;
     char            buf[ BLOCK_SIZE ];
     Superblock *    superblock;
-    char *             addr;
+    int free_inode_index = -1;
     Inode *         free_inode;
 
     read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
-    addr = superblock -> free_inode_list;
+    
+    // loop through superblock->free_inodes, find first non-negative
 
-    while( ( free_inode = ( Inode * ) addr ) > 0 ) {
-        addr += sizeof( Inode );
+    for (i=0; i<SB_ILIST_SIZE; i++) {
+      if (superblock->free_inodes[i] != -1) {
+        free_inode_index = superblock->free_inodes[i];
+      }
     }
 
-    return free_inode;
+    // if we get to the end without finding any free inodes, fetch some more from the inode datablocks
+    //    and put a bunch back into superblock->free_inodes
+
+    if (free_inode_index == -1) {
+      //ERROR--go fetch some free inodes and put them back on the list
+      return NULL;
+    }
+
+    // otherwise, return that inode.
+
+    // return inode number `free_inode_index`.
+    int inodes_per_block = floor(superblock->fs_block_size / superblock->fs_inode_size);
+    int block_num = free_inode_index / inodes_per_block;
+    int rel_inode_index = free_inode_index % inodes_per_block;
+
+    read_block(disk, block_num, buf);
+    Inode *block_inodes = (Inode*)buf;
+    return &(block_inodes[rel_inode_index]);
+    
+
+
+    //while( ( free_inode = ( Inode * ) addr ) > 0 ) {
+    //    addr += sizeof( Inode );
+    //}
+
+    //return free_inode;
 }
 
 /*
@@ -55,19 +96,24 @@ Inode * find_free_inode( Disk * disk ) {
  * Return -1 if there are no blocks available
  * */
 char * allocate_data_block( Disk *disk ) {
-    char            buf[ BLOCK_SIZE ];
+    char            buf[BLOCK_SIZE];
+    char            *blockbuf;
     Superblock *    superblock;
     
     read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
     int i, bitmap_index;
     int block_group_count = 0;                                                                                      //var to get location of each new bitmap
+    int block_num;
     for ( i = 0; i < superblock -> fs_num_block_groups; i++ ) {
-        Bitmap *bitmap = ( Bitmap *) ( superblock -> free_data_list + block_group_count );
+        block_num = superblock->first_data_block + i * BLOCK_SIZE;
+        Bitmap *bitmap = init_bitmap( superblock -> fs_block_size, buf); 
         if ( ( bitmap_index = first_unset_bit(bitmap) ) != -1 ) {
+            blockbuf = (char *)malloc(BLOCK_SIZE*sizeof(char));
             set_bit( bitmap, bitmap_index );
-            char * addr = superblock -> free_data_list + block_group_count + bitmap_index * superblock -> fs_block_size;  //address of data block 
-            return addr;
+            read_block(disk, bitmap_index, blockbuf);
+            //char * addr = superblock -> free_data_list + block_group_count + bitmap_index * superblock -> fs_block_size;  //address of data block 
+            return blockbuf;
         }
         block_group_count += superblock -> fs_block_size * superblock -> fs_block_size;
     }
