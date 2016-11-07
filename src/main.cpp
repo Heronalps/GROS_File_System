@@ -12,7 +12,7 @@ int main( int argc, char * const argv[] ) {
     // global setup...
 
     int result = Catch::Session() . run( argc, argv );
-	//Disk *disk = open_disk();
+    //Disk *disk = open_disk();
     // global clean-up...
 
     return result;
