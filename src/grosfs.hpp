@@ -3,6 +3,7 @@
  */
 #include <time.h>
 #include <math.h>
+#include <cstring>
 
 #ifndef __GROSFS_H_INCLUDED__   // if grosfs.h hasn't been included yet...
 #define __GROSFS_H_INCLUDED__   //   #define this so the compiler knows it has been included

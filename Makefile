@@ -3,7 +3,7 @@ CXX = g++
 ROOT_DIR = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 INC = $(ROOT_DIR)/include
 SRC = $(ROOT_DIR)/src
-CFLAGS = -Wall -m32 -g -I$(INC) -I$(SRC)
+CFLAGS = -Wall -g -I$(INC) -I$(SRC) 
 
 HEADERS = disk.hpp grosfs.hpp bitmap.hpp
 FILES = main.cpp disk.cpp bitmap.cpp grosfs.cpp

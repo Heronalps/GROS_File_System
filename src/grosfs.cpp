@@ -27,7 +27,7 @@ void make_fs( Disk * disk ) {
 		block_group_count += superblock -> fs_block_size * superblock -> fs_block_size;
 	}
 	
-	memcpy( disk, superblock, sizeof(Superblock) );
+  write_block(disk, 0, (char*) superblock);
 }
 
 /*
@@ -90,7 +90,7 @@ Inode * new_inode( Disk * disk ) {
 	inode -> f_block[0]					= allocate_data_block(disk);
 	Inode * free_inode = find_free_inode( disk );
 //	char * 	free_inode_addr = find_free_inode( disk );
-	memcpy( free_inode, inode, sizeof( Inode ) );
+  std::memcpy( free_inode, inode, sizeof( Inode ) );
 	return inode;
 }
 
@@ -98,7 +98,7 @@ Inode * new_inode( Disk * disk ) {
  * check if file has any hard links, else it's available for allocation
  * */
 int has_links( Inode * inode ) {
-    return inode -> f_acl > 1 ? 1 : 0;
+    return inode -> f_links >= 1 ? 1 : 0;
 }
 
 
