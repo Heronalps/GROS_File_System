@@ -60,6 +60,7 @@ Inode * find_free_inode( Disk * disk ) {
     for (i=0; i<SB_ILIST_SIZE; i++) {
       if (superblock->free_inodes[i] != -1) {
         free_inode_index = superblock->free_inodes[i];
+        superblock->free_inodes[i] = -1;
       }
     }
 
@@ -68,8 +69,12 @@ Inode * find_free_inode( Disk * disk ) {
 
     if (free_inode_index == -1) {
       //ERROR--go fetch some free inodes and put them back on the list
+      // TODO: Write and call that function
       return NULL;
     }
+
+    // save the -1 we just set for the inode we just found
+    write_block(disk, 0, (char*)superblock);
 
     // otherwise, return that inode.
 
@@ -81,18 +86,10 @@ Inode * find_free_inode( Disk * disk ) {
     read_block(disk, block_num, buf);
     Inode *block_inodes = (Inode*)buf;
     return &(block_inodes[rel_inode_index]);
-    
-
-
-    //while( ( free_inode = ( Inode * ) addr ) > 0 ) {
-    //    addr += sizeof( Inode );
-    //}
-
-    //return free_inode;
 }
 
 /*
- * Allocate inode from free data list
+ * Allocate data block from free data list
  * Return -1 if there are no blocks available
  * */
 char * allocate_data_block( Disk *disk ) {
@@ -112,7 +109,6 @@ char * allocate_data_block( Disk *disk ) {
             blockbuf = (char *)malloc(BLOCK_SIZE*sizeof(char));
             set_bit( bitmap, bitmap_index );
             read_block(disk, bitmap_index, blockbuf);
-            //char * addr = superblock -> free_data_list + block_group_count + bitmap_index * superblock -> fs_block_size;  //address of data block 
             return blockbuf;
         }
         block_group_count += superblock -> fs_block_size * superblock -> fs_block_size;
@@ -132,7 +128,7 @@ Inode * new_inode( Disk * disk ) {
     inode -> f_ctime                    = time(NULL);
     inode -> f_mtime                    = time(NULL);
     inode -> f_atime                    = time(NULL);
-    inode -> f_links                    = 1;
+    inode -> f_links                    = 0; // set to 1 in mknod
     inode -> f_block[0]                    = allocate_data_block(disk);
     Inode * free_inode = find_free_inode( disk );
 //    char *     free_inode_addr = find_free_inode( disk );
