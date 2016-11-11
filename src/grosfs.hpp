@@ -73,9 +73,10 @@ void make_fs( Disk * disk );
 Inode * new_inode( Disk * disk );
 int has_links( Inode * inode );
 Inode * find_free_inode( Disk * disk );
+int free_blocks_list( Disk *disk, int *list, int n);
 void free_inode( Disk * disk, Inode * inode);
 int deallocate_inode(Disk *disk, Inode *inode);
 char * allocate_data_block( Disk *disk );
 void free_data_block( Disk *disk, int block );
 
-#endif 
+#endif

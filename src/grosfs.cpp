@@ -20,7 +20,7 @@ void make_fs( Disk * disk ) {
     superblock -> fs_num_used_blocks    = 0;
 
     // the free_data_list starts at the first block after the superblock and all of the inodes
-    superblock -> first_data_block      = 1 /* Superblock */ + num_inode_blocks /* number of blocks dedicated to inodes */; 
+    superblock -> first_data_block      = 1 /* Superblock */ + num_inode_blocks /* number of blocks dedicated to inodes */;
     //superblock -> free_inode_list       = &disk -> mem[ sizeof( Superblock ) ];
     for (i=0; i<SB_ILIST_SIZE; i++) {
       superblock->free_inodes[i] = i;
@@ -38,7 +38,7 @@ void make_fs( Disk * disk ) {
         write_block(disk, block_num, bitmap->buf);
         free(buf);
     }
-    
+
     write_block(disk, 0, (char*) superblock);
 }
 
@@ -54,7 +54,7 @@ Inode * find_free_inode( Disk * disk ) {
 
     read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
-    
+
     // loop through superblock->free_inodes, find first non-negative
 
     for (i=0; i<SB_ILIST_SIZE; i++) {
@@ -96,15 +96,15 @@ char * allocate_data_block( Disk *disk ) {
     char            buf[BLOCK_SIZE];
     char            *blockbuf;
     Superblock *    superblock;
-    
+
     read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
     int i, bitmap_index;
-    int block_group_count = 0;                                                                                      //var to get location of each new bitmap
+    int block_group_count = 0;  //var to get location of each new bitmap
     int block_num;
     for ( i = 0; i < superblock -> fs_num_block_groups; i++ ) {
         block_num = superblock->first_data_block + i * BLOCK_SIZE;
-        Bitmap *bitmap = init_bitmap( superblock -> fs_block_size, buf); 
+        Bitmap *bitmap = init_bitmap( superblock -> fs_block_size, buf);
         if ( ( bitmap_index = first_unset_bit(bitmap) ) != -1 ) {
             blockbuf = (char *)malloc(BLOCK_SIZE*sizeof(char));
             set_bit( bitmap, bitmap_index );
@@ -145,49 +145,94 @@ int has_links( Inode * inode ) {
 
 
 /*
- * Deallocate inode from free data list
+ * Deallocate data block
  * */
-/*void free_data_block( Disk *disk, char * block ) {
-    char            buf[ BLOCK_SIZE ];
-    Superblock *    superblock;
-    
+void free_data_block( Disk *disk, int block_index ) {
+    char buf[ BLOCK_SIZE ];
+    int relative_index, block_group, offset;
+    Bitmap *bm;
+    Superblock *superblock;
+
+    // write zeroes to block
+    write_block( disk, block_index, buf);
+
+    // decrement number of used datablocks for the superblock
     read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
-    int i, bitmap_index;
-    int block_group_count = 0;                                                                                      //var to get location of each new bitmap
-    for ( i = 0; i < superblock -> fs_num_block_groups; i++ ) {
-        Bitmap *bitmap = ( Bitmap * )( superblock -> free_data_list + block_group_count );
-        char * next_bitmap_addr = superblock -> free_data_list + block_group_count + superblock -> fs_block_size * superblock -> fs_block_size;
-        if ( block < next_bitmap_addr ) {                                                                           //see if block lies within current block group
-            memset( block, 0, superblock -> fs_block_size );
-            int bitmap_index = ( block - bitmap ) / superblock -> fs_block_size;                                  //get bitmap index of block 
-            unset_bit(bitmap, bitmap_index);
-        }
-        block_group_count += superblock -> fs_block_size * superblock -> fs_block_size;
+    superblock->fs_num_used_blocks--;
+    write_block( disk, 0, buf );
+
+    // calculate which block group this block is in
+    relative_index = block_index - superblock->first_data_block;
+    block_group = relative_index / BLOCK_SIZE;
+    offset = relative_index % BLOCK_SIZE;
+
+    // mark the block as unused in its block group leader
+    read_block( disk, superblock->first_data_block + block_group * BLOCK_SIZE, buf );
+    bm = init_bitmap(BLOCK_SIZE, buf);
+    unset_bit(bm, offset);
+    write_block( disk, superblock->first_data_block + block_group * BLOCK_SIZE, buf);
+}
+
+int free_blocks_list( Disk *disk, int *list, int n) {
+  int i, block, done = 0;
+  for (i=0; i<n; i++) {
+    block = list[i];
+    if ( block != -1 ) {
+      free_data_block(disk, block);
+    } else {
+      done = 1;
+      break;
     }
-} */
+  }
+  return done;
+}
 
 /*
  * Deallocate inode from free inode list
  * */
-/*void free_inode( Disk * disk, Inode * inode) {
-//  deallocate data blocks
-    int i;
-    int direct_blocks_empty = 0;                                    //0 if data blocks don't go past direct blocks
-    for ( i = 0; i < 12; i++ ) {
-        if ( inode -> f_block[i] != NULL ) {
-            free_data_block( disk, inode -> f_block[i] );
-            direct_blocks_empty = 1;
-        }
-        else {
-            direct_blocks_empty = 0;
-            break;
-        }
+void free_inode( Disk * disk, Inode *inode) {
+    char sbuf[ BLOCK_SIZE ];
+    char dbuf[ BLOCK_SIZE ];
+    char tbuf[ BLOCK_SIZE ];
+    int i, j, block, done = 0;
+
+    int num_blocks = inode->f_size / BLOCK_SIZE;
+    int direct_blocks = std::min(12, num_blocks);
+
+    // deallocate the direct blocks
+    done = free_blocks_list(disk, (int*)inode->f_block, direct_blocks);
+
+    // deallocate the single indirect blocks
+    if (done == 0) {
+      read_block(disk, (long)inode->f_block[12], sbuf); // the block of redirects
+      done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
     }
-    //still need to loop through indirect blocks and free those
-    memset( inode, 0, sizeof( Inode ) );    //inode or disk[ inode ]?
+
+    // deallocate the double indirect blocks
+    if (done == 0) {
+      read_block(disk, (long)inode->f_block[13], dbuf); // the block of double redirects
+      for (i=0; i<BLOCK_SIZE/sizeof(int); i++) {
+        read_block(disk, (int)dbuf[i], sbuf); // the block of single redirects
+        done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
+        if (done == 1) { break; }
+      }
+    }
+
+    // deallocate the triple indirect blocks
+    if (done == 0) {
+      read_block(disk, (long)inode->f_block[14], tbuf); // the block of triple redirects
+      for (i=0; i<BLOCK_SIZE/sizeof(int); i++) {
+        read_block(disk, tbuf[i], dbuf); // the block of double redirects
+        for (j=0; j<BLOCK_SIZE/sizeof(int); j++) {
+          read_block(disk, dbuf[i], sbuf); // the block of single redirects
+          done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
+          if (done == 1) { break; }
+        }
+        if (done == 1) { break; }
+      }
+    }
 }
-*/
 
 
 // allocate inode  - single empty data block + size = 0
