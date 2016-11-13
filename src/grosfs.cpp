@@ -115,11 +115,14 @@ Inode * find_free_inode( Disk * disk ) {
     // if we get to the end without finding any free inodes, fetch some more from the inode datablocks
     //    and put a bunch back into superblock->free_inodes
 
-    if (free_inode_index == -1) {
-      //ERROR--go fetch some free inodes and put them back on the list
-      // TODO: Write and call that function
-      return NULL;
-    }
+	if (i == SB_ILIST_SIZE - 1) {
+		repopulate_ilist(disk, free_inode_index);
+	}
+//     if (free_inode_index == -1) {
+//       //ERROR--go fetch some free inodes and put them back on the list
+//       // TODO: Write and call that function
+//       return NULL;
+//     }
 
     // save the -1 we just set for the inode we just found
     write_block(disk, 0, (char*)superblock);
@@ -127,6 +130,39 @@ Inode * find_free_inode( Disk * disk ) {
     // otherwise, return that inode.
 
     return get_inode( disk, free_inode_index );
+}
+
+void repopulate_ilist(Disk *disk, int inode_index) {
+	int i,j;
+    char            buf[ BLOCK_SIZE ];
+    Superblock *    superblock;
+    Inode *tmp = new Inode();
+    int rel_inode_index;
+    int ilist_count = 0;
+
+    read_block( disk, 0, buf );
+    superblock = ( Superblock * ) buf;
+    
+    int num_blocks = superblock -> fs_disk_size / superblock -> fs_block_size;
+    int num_inode_blocks = ceil( num_blocks * INODE_BLOCKS );
+    int inode_per_block = floor( superblock -> fs_block_size / superblock -> fs_inode_size );
+    int starting_block = inode_index / inode_per_block;
+    for (i=starting_block; i <= num_inode_blocks; i++) {
+      // read in the block
+      read_block( disk, i, (char *) buf );
+      for (j=0; j < inode_per_block; j++) {
+        rel_inode_index = j % inode_per_block;
+        std::memcpy(tmp, ((Inode*)buf) + rel_inode_index, sizeof(Inode));
+        if (tmp->f_links == 0) {
+        	superblock->free_inodes[ilist_count] = tmp->f_inode_num;
+        	ilist_count++;
+        	if (ilist_count == SB_ILIST_SIZE) {
+        		write_block( disk, 0, (char *) superblock );
+        		return;
+        	}
+        }
+      }
+    }
 }
 
 

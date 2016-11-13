@@ -74,6 +74,7 @@ void make_fs( Disk * disk ); // initialize the file system
 void fsck( Disk * disk ); // recover the file system
 
 Inode * find_free_inode( Disk * disk );
+void repopulate_ilist(Disk *disk, int inode_index);
 Inode * new_inode( Disk * disk ); // allocate inode
 Inode * get_inode( Disk * disk, int inode_num ); // allocate inode
 void free_inode( Disk * disk, Inode * inode ); // deallocate_inode
