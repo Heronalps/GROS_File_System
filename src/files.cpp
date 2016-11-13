@@ -3,6 +3,7 @@
  */
 
 #include "files.hpp"
+#include <cstring>
 
 
 /**
@@ -23,11 +24,28 @@ void mkroot( Disk * disk ) {
 
     root[0].inode_num = root_i->f_inode_num;
     root[0].has_next = 1;
-    root[0].filename = ".";
+    strcpy(root[0].filename, ".");
 
     root[1].inode_num = root_i->f_inode_num;
     root[1].has_next = 0;
-    root[1].filename = ".";
+    strcpy(root[1].filename, "..");
 
-    i_write(disk, root_i, root, 2 * sizeof(DirEntry), 0);
+    i_write(disk, root_i, (char *)root, 2 * sizeof(DirEntry), 0);
+}
+
+
+/**
+ * Writes `size` bytes (at `offset` bytes from 0) into file
+ *  corresponding to given Inode on the given disk from given buffer
+ *
+ * @param Disk*  disk     Disk containing the file system
+ * @param Inode* inode    Inode corresponding to the file to write to
+ * @param char*  buf      Buffer to write to file (must be at least
+ *                           `size` bytes)
+ * @param int    size     Number of bytes to write
+ * @param int    offset   Offset into the file to start writing to
+ */
+int i_write(Disk * disk, Inode *inode, char *buf, int size, int offset) {
+  // stub
+  return -1;
 }

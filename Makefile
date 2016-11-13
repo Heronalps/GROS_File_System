@@ -5,8 +5,8 @@ INC = $(ROOT_DIR)/include
 SRC = $(ROOT_DIR)/src
 CFLAGS = -Wall -g -I$(INC) -I$(SRC) 
 
-HEADERS = disk.hpp grosfs.hpp bitmap.hpp
-FILES = main.cpp disk.cpp bitmap.cpp grosfs.cpp
+HEADERS = disk.hpp grosfs.hpp bitmap.hpp files.hpp
+FILES = main.cpp disk.cpp bitmap.cpp grosfs.cpp files.cpp
 EXECUTABLES = $(PROJECT_NAME)
 
 all: $(EXECUTABLES)

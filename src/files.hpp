@@ -5,8 +5,9 @@
 #ifndef __FILES_HPP_INCLUDED__   // if files.hpp hasn't been included yet...
 #define __FILES_HPP_INCLUDED__   //   #define this so the compiler knows it has been included
 
-//#include "grosfs.hpp"
 #include "../include/catch.hpp"
+#include "grosfs.hpp"
+#include "disk.hpp"
 #include <cstring>
 
 #define FILENAME_MAX_LENGTH 255
