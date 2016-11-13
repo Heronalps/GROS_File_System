@@ -197,7 +197,7 @@ void free_inode( Disk * disk, Inode *inode) {
     char tbuf[ BLOCK_SIZE ];
     int i, j, block, done = 0;
 
-    int num_blocks = inode->f_size / BLOCK_SIZE;
+    int num_blocks = ceil(inode->f_size / BLOCK_SIZE);
     int direct_blocks = std::min(12, num_blocks);
 
     // deallocate the direct blocks
