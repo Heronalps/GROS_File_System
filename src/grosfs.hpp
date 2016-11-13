@@ -66,7 +66,7 @@ typedef struct _inode { // 106 bytes
      *    f_block[13]   = doubly indirect data blocks
      *    f_block[14]   = triply indirect data blocks
      */
-    char *  f_block[15];
+    int     f_block[15];
 } Inode;
 
 

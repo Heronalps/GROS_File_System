@@ -118,7 +118,10 @@ Inode * get_inode( Disk * disk, int inode_num ) {
     // return inode number `free_inode_index`.
     int inodes_per_block, block_num, rel_inode_index;
     char buf[BLOCK_SIZE];
+    Superblock *superblock;
 
+    read_block( disk, 0, (char *) buf );
+    superblock = (Superblock *) buf;
     inodes_per_block = floor(superblock->fs_block_size / superblock->fs_inode_size);
     block_num = inode_num / inodes_per_block;
     rel_inode_index = inode_num % inodes_per_block;
@@ -200,10 +203,12 @@ int has_links( Inode * inode ) {
  */
 int allocate_data_block( Disk *disk ) {
     char            buf[BLOCK_SIZE];
+    char            sbbuf[BLOCK_SIZE];
     int             i, bitmap_index, block_num;
     Superblock *    superblock;
 
-    read_block( disk, 0, (char *) superblock );
+    read_block( disk, 0, (char *) sbbuf );
+    superblock = (Superblock *) sbbuf;
 
     for ( i = 0; i < superblock -> fs_num_block_groups; i++ ) {
         // block num for block group free list
