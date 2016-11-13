@@ -7,7 +7,7 @@
  * @param Disk* disk    The disk for the new file system
  */
 void make_fs( Disk * disk ) {
-    int i;
+    int i, j, k;
 //    cast to / from ( Superblock * )
     Superblock * superblock             = new Superblock();
     superblock -> fs_disk_size          = disk -> size;
@@ -24,6 +24,31 @@ void make_fs( Disk * disk ) {
 
     // the free_data_list starts at the first block after the superblock and all of the inodes
     superblock -> first_data_block      = 1 /* Superblock */ + num_inode_blocks /* number of blocks dedicated to inodes */;
+
+    // set up each of the inodes to *be* an inode
+    int inode_count = 0;
+    int rel_inode_index;
+    char ibuf[BLOCK_SIZE];
+    Inode *tmp = new Inode();
+    tmp->f_links = 0; // the inode is free
+    for (k=0; k < 15; k++) {
+      tmp->f_block[k] = -1; // no data block allocated
+    }
+
+    // inodes are in blocks 1 through `num_inode_blocks`
+    for (i=1; i <= num_inode_blocks; i++) {
+      // read in the block
+      read_block( disk, i, (char *) ibuf );
+      for (j=0; j < inode_per_block; j++) {
+        tmp->f_inode_num = inode_count++;
+        rel_inode_index = j % inode_per_block;
+        std::memcpy(((Inode*)tmp) + rel_inode_index, tmp, sizeof(Inode));
+      }
+      write_block( disk, i, (char *) ibuf );
+    }
+    
+    delete tmp;
+
     //superblock -> free_inode_list       = &disk -> mem[ sizeof( Superblock ) ];
     for (i=0; i<SB_ILIST_SIZE; i++) {
       superblock->free_inodes[i] = i;
