@@ -46,7 +46,7 @@ void make_fs( Disk * disk ) {
       }
       write_block( disk, i, (char *) ibuf );
     }
-    
+
     delete tmp;
 
     //superblock -> free_inode_list       = &disk -> mem[ sizeof( Superblock ) ];
@@ -68,6 +68,8 @@ void make_fs( Disk * disk ) {
     }
 
     write_block(disk, 0, (char*) superblock);
+
+    mkroot(disk); // set up the root directory
 }
 
 
