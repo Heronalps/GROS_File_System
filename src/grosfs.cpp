@@ -78,10 +78,36 @@ Inode * find_free_inode( Disk * disk ) {
 
     // otherwise, return that inode.
 
+    return get_inode( disk, free_inode_index );
+}
+
+/*
+ * allocate new inode from list ( rb tree ? )
+ * */
+Inode * new_inode( Disk * disk ) {
+    Inode * inode                       = new Inode();
+    inode -> f_size                     = 0;
+    inode -> f_uid                      = 0;    //through system call??
+    inode -> f_gid                      = 0;    //through system call??
+    inode -> f_acl                      = 0;    //through system call??
+    inode -> f_ctime                    = time(NULL);
+    inode -> f_mtime                    = time(NULL);
+    inode -> f_atime                    = time(NULL);
+    inode -> f_links                    = 0; // set to 1 in mknod
+    inode -> f_block[0]                 = allocate_data_block(disk);
+    Inode * free_inode                  = find_free_inode( disk );
+    std::memcpy( free_inode, inode, sizeof( Inode ) );
+    return inode;
+}
+
+Inode * get_inode( Disk * disk, int inode_num ) {
     // return inode number `free_inode_index`.
-    int inodes_per_block = floor(superblock->fs_block_size / superblock->fs_inode_size);
-    int block_num = free_inode_index / inodes_per_block;
-    int rel_inode_index = free_inode_index % inodes_per_block;
+    int inodes_per_block, block_num, rel_inode_index;
+    char buf[BLOCK_SIZE];
+
+    inodes_per_block = floor(superblock->fs_block_size / superblock->fs_inode_size);
+    block_num = inode_num / inodes_per_block;
+    rel_inode_index = inode_num % inodes_per_block;
 
     read_block(disk, block_num, buf);
     Inode *block_inodes = (Inode*)buf;
@@ -92,48 +118,27 @@ Inode * find_free_inode( Disk * disk ) {
  * Allocate data block from free data list
  * Return -1 if there are no blocks available
  * */
-char * allocate_data_block( Disk *disk ) {
+int allocate_data_block( Disk *disk ) {
     char            buf[BLOCK_SIZE];
-    char            *blockbuf;
+    int             i, bitmap_index, block_num;
     Superblock *    superblock;
 
-    read_block( disk, 0, buf );
-    superblock = ( Superblock * ) buf;
-    int i, bitmap_index;
-    int block_group_count = 0;  //var to get location of each new bitmap
-    int block_num;
-    for ( i = 0; i < superblock -> fs_num_block_groups; i++ ) {
-        block_num = superblock->first_data_block + i * BLOCK_SIZE;
-        Bitmap *bitmap = init_bitmap( superblock -> fs_block_size, buf);
-        if ( ( bitmap_index = first_unset_bit(bitmap) ) != -1 ) {
-            blockbuf = (char *)malloc(BLOCK_SIZE*sizeof(char));
-            set_bit( bitmap, bitmap_index );
-            read_block(disk, bitmap_index, blockbuf);
-            return blockbuf;
-        }
-        block_group_count += superblock -> fs_block_size * superblock -> fs_block_size;
-    }
-    return NULL;    //no blocks available
-}
+    read_block( disk, 0, (char *) superblock );
 
-/*
- * allocate new inode from list ( rb tree ? )
- * */
-Inode * new_inode( Disk * disk ) {
-    Inode * inode                         = new Inode();
-    inode -> f_size                        = 0;
-    inode -> f_uid                        = 0;    //through system call??
-    inode -> f_gid                        = 0;    //through system call??
-    inode -> f_acl                        = 0;    //through system call??
-    inode -> f_ctime                    = time(NULL);
-    inode -> f_mtime                    = time(NULL);
-    inode -> f_atime                    = time(NULL);
-    inode -> f_links                    = 0; // set to 1 in mknod
-    inode -> f_block[0]                    = allocate_data_block(disk);
-    Inode * free_inode = find_free_inode( disk );
-//    char *     free_inode_addr = find_free_inode( disk );
-  std::memcpy( free_inode, inode, sizeof( Inode ) );
-    return inode;
+    for ( i = 0; i < superblock -> fs_num_block_groups; i++ ) {
+        // block num for block group free list
+        block_num = superblock->first_data_block + i * BLOCK_SIZE;
+        read_block( disk, block_num, buf );
+        Bitmap *bitmap = init_bitmap( superblock -> fs_block_size, buf);
+        // if there is a free block in this block group
+        if ( ( bitmap_index = first_unset_bit(bitmap) ) != -1 ) {
+            // mark the data block as not free
+            set_bit( bitmap, bitmap_index );
+            write_block( disk, block_num, buf );
+            return block_num + bitmap_index; // block num for free block
+        }
+    }
+    return -1;    //no blocks available
 }
 
 /*
