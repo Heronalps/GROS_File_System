@@ -66,17 +66,21 @@ typedef struct _inode { // 106 bytes
      *    f_block[13]   = doubly indirect data blocks
      *    f_block[14]   = triply indirect data blocks
      */
-    char *  f_block[15];
+    int     f_block[15];
 } Inode;
 
-void make_fs( Disk * disk );
-Inode * new_inode( Disk * disk );
-int has_links( Inode * inode );
+
+void make_fs( Disk * disk ); // initialize the file system
+
 Inode * find_free_inode( Disk * disk );
-int free_blocks_list( Disk *disk, int *list, int n);
-void free_inode( Disk * disk, Inode * inode);
-int deallocate_inode(Disk *disk, Inode *inode);
-char * allocate_data_block( Disk *disk );
-void free_data_block( Disk *disk, int block );
+Inode * new_inode( Disk * disk ); // allocate inode
+Inode * get_inode( Disk * disk, int inode_num ); // allocate inode
+void free_inode( Disk * disk, Inode * inode ); // deallocate_inode
+int has_links( Inode * inode );
+
+int allocate_data_block( Disk *disk ); // allocate data block
+void free_data_block( Disk *disk, int block ); // deallocate a data block
+int free_blocks_list( Disk *disk, int *list, int n); // deallocate a list of data blocks
+// read/write data blocks through disk (read_block, write_block)
 
 #endif
