@@ -42,7 +42,7 @@ void make_fs( Disk * disk ) {
       for (j=0; j < inode_per_block; j++) {
         tmp->f_inode_num = inode_count++;
         rel_inode_index = j % inode_per_block;
-        std::memcpy(((Inode*)tmp) + rel_inode_index, tmp, sizeof(Inode));
+        std::memcpy(((Inode*)ibuf) + rel_inode_index, tmp, sizeof(Inode));
       }
       write_block( disk, i, (char *) ibuf );
     }
@@ -68,6 +68,20 @@ void make_fs( Disk * disk ) {
     }
 
     write_block(disk, 0, (char*) superblock);
+}
+
+
+/**
+ * Verifies and corrects all file system information
+ *  - Ensures all data blocks marked as "used" appear in an inode
+ *  - Those that do not will be freed (or put into /lost+found)
+ *  - Also repopulates the inode free list
+ *  - Counts the number of used inodes and data blocks
+ *
+ * @param Disk* disk    The disk that contains the file system
+ */
+void fsck( Disk * disk ) {
+  // TODO
 }
 
 

@@ -71,6 +71,7 @@ typedef struct _inode { // 106 bytes
 
 
 void make_fs( Disk * disk ); // initialize the file system
+void fsck( Disk * disk ); // recover the file system
 
 Inode * find_free_inode( Disk * disk );
 Inode * new_inode( Disk * disk ); // allocate inode
