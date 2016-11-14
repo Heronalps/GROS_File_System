@@ -142,7 +142,7 @@ void repopulate_ilist(Disk *disk, int inode_index) {
 
     read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
-    
+
     int num_blocks = superblock -> fs_disk_size / superblock -> fs_block_size;
     int num_inode_blocks = ceil( num_blocks * INODE_BLOCKS );
     int inode_per_block = floor( superblock -> fs_block_size / superblock -> fs_inode_size );
@@ -197,6 +197,7 @@ Inode * get_inode( Disk * disk, int inode_num ) {
     int inodes_per_block, block_num, rel_inode_index;
     char buf[BLOCK_SIZE];
     Superblock *superblock;
+    Inode *ret_inode = new Inode();
 
     read_block( disk, 0, (char *) buf );
     superblock = (Superblock *) buf;
@@ -206,7 +207,8 @@ Inode * get_inode( Disk * disk, int inode_num ) {
 
     read_block(disk, block_num, buf);
     Inode *block_inodes = (Inode*)buf;
-    return &(block_inodes[rel_inode_index]);
+    std::memcpy(ret_inode, &(block_inodes[rel_inode_index]), sizeof(Inode));
+    return ret_inode;
 }
 
 
