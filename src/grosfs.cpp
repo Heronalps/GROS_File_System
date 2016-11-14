@@ -193,7 +193,6 @@ Inode * new_inode( Disk * disk ) {
  * @param int   inode_num   The inode index
  */
 Inode * get_inode( Disk * disk, int inode_num ) {
-    // return inode number `free_inode_index`.
     int inodes_per_block, block_num, rel_inode_index;
     char buf[BLOCK_SIZE];
     Superblock *superblock;
@@ -209,6 +208,34 @@ Inode * get_inode( Disk * disk, int inode_num ) {
     Inode *block_inodes = (Inode*)buf;
     std::memcpy(ret_inode, &(block_inodes[rel_inode_index]), sizeof(Inode));
     return ret_inode;
+}
+
+
+/**
+ * Saves an Inode back to disk
+ *
+ * @param Disk*  disk        The disk containing the file system
+ * @param Inode* inode_num   The inode to save
+ */
+int save_inode( Disk * disk, Inode * inode ) {
+    int inodes_per_block, block_num, rel_inode_index;
+    char buf[BLOCK_SIZE];
+    Superblock *superblock;
+    int inode_num = inode->f_inode_num;
+
+    // get data from superblock to calculate where inode should be
+    read_block( disk, 0, (char *) buf );
+    superblock = (Superblock *) buf;
+    inodes_per_block = floor(superblock->fs_block_size / superblock->fs_inode_size);
+    block_num = inode_num / inodes_per_block;
+    rel_inode_index = inode_num % inodes_per_block;
+
+    // save the inode to disk
+    read_block(disk, block_num, buf);
+    Inode *block_inodes = (Inode*)buf;
+    std::memcpy(&(block_inodes[rel_inode_index]), inode, sizeof(Inode));
+    write_block(disk, block_num, buf);
+    return inode_num;
 }
 
 

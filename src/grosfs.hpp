@@ -77,6 +77,7 @@ Inode * find_free_inode( Disk * disk );
 void repopulate_ilist(Disk *disk, int inode_index);
 Inode * new_inode( Disk * disk ); // allocate inode
 Inode * get_inode( Disk * disk, int inode_num ); // allocate inode
+int save_inode( Disk * disk, Inode * inode ); // save inode
 void free_inode( Disk * disk, Inode * inode ); // deallocate_inode
 int has_links( Inode * inode );
 
