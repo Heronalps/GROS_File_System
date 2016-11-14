@@ -32,7 +32,7 @@ void mkroot( Disk * disk );
  * @param Disk* disk  Disk containing the file system
  * @param char* path  Path to the file, starting from root "/"
  */
-int namei(Disk * disk, const char* path);
+int namei( Disk * disk, const char * path );
 
 /**
  * Creates a file
@@ -52,9 +52,10 @@ int mknod(Disk * disk, const char* path);
  * @param Inode* inode    Inode of directory in which to place new directory
  * @param char*  dirname  Name of new directory
  */
-int i_mkdir(Disk *disk, Inode *inode, const char* dirname);
+int i_mkdir( Disk * disk, Inode * inode, const char * dirname );
+
 /* @param char*  path     FULL path (from root "/") to place the new directory */
-int mkdir(Disk * disk, const char* path);
+int mkdir( Disk * disk, const char * path );
 
 /**
  * Removes a directory and decrements all link counts for all files in directory
@@ -65,9 +66,10 @@ int mkdir(Disk * disk, const char* path);
  * @param Inode* inode    Inode of directory containing directory to delete
  * @param char*  dirname  Name of directory to delete
  */
-int i_rmdir(Disk *disk, Inode *inode, const char* dirname);
+int i_rmdir( Disk * disk, Inode * inode, const char * dirname );
+
 /* @param char*  path     FULL path (from root "/") to directory the remove */
-int rmdir(Disk * disk, const char* path);
+int rmdir( Disk * disk, const char * path );
 
 /**
  * Removes a file or directory. If the file is a directory, calls rmdir.
@@ -76,9 +78,10 @@ int rmdir(Disk * disk, const char* path);
  * @param Inode* inode      Inode of directory containing file to delete
  * @param char*  filename   Name of file to delete
  */
-int i_unlink(Disk * disk, Inode *inode, const char* filename);
+int i_unlink( Disk * disk, Inode * inode, const char * filename );
+
 /* @param char*  path       FULL path (from root "/") to the file */
-int unlink(Disk * disk, const char* path);
+int unlink( Disk * disk, const char * path );
 
 /**
  * Renames a file or directory
@@ -88,9 +91,11 @@ int unlink(Disk * disk, const char* path);
  * @param char*  oldname    Name of file to rename
  * @param char*  oldname    New name for file
  */
-int i_rename(Disk * disk, Inode *inode, const char* oldname, const char* newname);
+int i_rename( Disk * disk, Inode * inode, const char * oldname,
+              const char * newname );
+
 /* @param char*  path       FULL path (from root "/") to the file */
-int rename(Disk * disk, const char* path, const char* newname);
+int rename( Disk * disk, const char * path, const char * newname );
 
 /**
  * Reads `size` bytes at `offset` offset bytes from file corresponding
@@ -103,9 +108,10 @@ int rename(Disk * disk, const char* path, const char* newname);
  * @param int    size     Number of bytes to read
  * @param int    offset   Offset into the file to start reading from
  */
-int i_read(Disk * disk, Inode *inode, char *buf, int size, int offset);
+int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset );
+
 /* @param char*  path     FULL path (from root "/") to the file */
-int read(Disk * disk, const char* path, char *buf, int size, int offset);
+int read( Disk * disk, const char * path, char * buf, int size, int offset );
 
 /**
  * Writes `size` bytes (at `offset` bytes from 0) into file
@@ -118,9 +124,10 @@ int read(Disk * disk, const char* path, char *buf, int size, int offset);
  * @param int    size     Number of bytes to write
  * @param int    offset   Offset into the file to start writing to
  */
-int i_write(Disk * disk, Inode *inode, char *buf, int size, int offset);
+int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset );
+
 /* @param char*  path     FULL path (from root "/") to the file */
-int write(Disk * disk, const char* path, char *buf, int size, int offset);
+int write( Disk * disk, const char * path, char * buf, int size, int offset );
 
 /**
  * Truncates or extends the file to a specified length
@@ -129,9 +136,10 @@ int write(Disk * disk, const char* path, char *buf, int size, int offset);
  * @param Inode* inode    Inode corresponding to the file to resize
  * @param int    size     Desired file size
  */
-int i_truncate(Disk * disk, Inode *inode, int size);
+int i_truncate( Disk * disk, Inode * inode, int size );
+
 /* @param char*  path     FULL path (from root "/") to the file */
-int truncate(Disk * disk, const char* path, int size);
+int truncate( Disk * disk, const char * path, int size );
 
 /**
  * Ensures that a file is at least `size` bytes long. If it is already
