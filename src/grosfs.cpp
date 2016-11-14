@@ -95,13 +95,11 @@ void fsck( Disk * disk ) {
  */
 Inode * find_free_inode( Disk * disk ) {
     int i;
-    char            buf[ BLOCK_SIZE ];
-    Superblock *    superblock;
+    Superblock *    superblock = new Superblock();
     int free_inode_index = -1;
     Inode *         free_inode;
 
-    read_block( disk, 0, buf );
-    superblock = ( Superblock * ) buf;
+    read_block( disk, 0, (char*) superblock );
 
     // loop through superblock->free_inodes, find first non-negative
 
@@ -135,13 +133,12 @@ Inode * find_free_inode( Disk * disk ) {
 void repopulate_ilist(Disk *disk, int inode_index) {
 	int i,j;
     char            buf[ BLOCK_SIZE ];
-    Superblock *    superblock;
+    Superblock *    superblock = new Superblock();
     Inode *tmp = new Inode();
     int rel_inode_index;
     int ilist_count = 0;
 
-    read_block( disk, 0, buf );
-    superblock = ( Superblock * ) buf;
+    read_block( disk, 0, (char*) superblock );
 
     int num_blocks = superblock -> fs_disk_size / superblock -> fs_block_size;
     int num_inode_blocks = ceil( num_blocks * INODE_BLOCKS );
@@ -344,16 +341,15 @@ void free_data_block( Disk *disk, int block_index ) {
     char buf[ BLOCK_SIZE ];
     int relative_index, block_group, offset;
     Bitmap *bm;
-    Superblock *superblock;
+    Superblock *superblock = new Superblock();
 
     // write zeroes to block
     write_block( disk, block_index, buf);
 
     // decrement number of used datablocks for the superblock
-    read_block( disk, 0, buf );
-    superblock = ( Superblock * ) buf;
+    read_block( disk, 0, (char*) superblock );
     superblock->fs_num_used_blocks--;
-    write_block( disk, 0, buf );
+    write_block( disk, 0, (char*) superblock );
 
     // calculate which block group this block is in
     relative_index = block_index - superblock->first_data_block;
