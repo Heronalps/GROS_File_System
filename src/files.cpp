@@ -29,7 +29,7 @@ void mkroot( Disk * disk ) {
     strcpy(root[1].filename, "..");
 
     i_write(disk, root_i, (char *)root, 2 * sizeof(DirEntry), 0);
-    save_inode(disk, root_i)
+    save_inode(disk, root_i);
     delete root_i;
 }
 
