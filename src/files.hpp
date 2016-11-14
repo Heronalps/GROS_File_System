@@ -35,6 +35,17 @@ void mkroot( Disk * disk );
 int namei(Disk * disk, const char* path);
 
 /**
+ * Creates a file
+ *
+ * @param Disk*  disk     Disk containing the file system
+ * @param Inode* inode    Inode of directory in which to place new file
+ * @param char*  filename  Name of new file
+ */
+int i_mknod(Disk *disk, Inode *inode, const char* filename);
+/* @param char*  path     FULL path (from root "/") to place the new file */
+int mknod(Disk * disk, const char* path);
+
+/**
  * Creates a directory with two entries (. and ..)
  *
  * @param Disk*  disk     Disk containing the file system
