@@ -23,11 +23,9 @@ void mkroot( Disk * disk ) {
     root_i->f_links = 1;
 
     root[0].inode_num = root_i->f_inode_num;
-    root[0].has_next = 1;
     strcpy(root[0].filename, ".");
 
     root[1].inode_num = root_i->f_inode_num;
-    root[1].has_next = 0;
     strcpy(root[1].filename, "..");
 
     i_write(disk, root_i, (char *)root, 2 * sizeof(DirEntry), 0);

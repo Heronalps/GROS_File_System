@@ -14,7 +14,6 @@
 
 typedef struct _direntry {
   int inode_num;  /* inode of file */
-  char has_next;  /* 0 if this is the last entry, 1 if there are more entries */
   char filename[FILENAME_MAX_LENGTH]; /* the filename */
 } DirEntry;
 
