@@ -133,6 +133,20 @@ int i_truncate(Disk * disk, Inode *inode, int size);
 /* @param char*  path     FULL path (from root "/") to the file */
 int truncate(Disk * disk, const char* path, int size);
 
+/**
+ * Ensures that a file is at least `size` bytes long. If it is already
+ *  `size` bytes, nothing happens and this returns 0. Otherwise, the
+ *  file is allocated data blocks as necessary and zero-filled to be
+ *  `size` bytes long, returning the number of bytes extended.
+ *
+ * @param Disk*  disk     Disk containing the file system
+ * @param Inode* inode    Inode corresponding to the file to resize
+ * @param int    size     Desired file size
+ */
+int i_ensure_size(Disk * disk, Inode *inode, int size);
+/* @param char*  path     FULL path (from root "/") to the file */
+int ensure_size(Disk * disk, const char* path, int size);
+
 /*
     namei: get path to filename
     mkdir: makes a directory
