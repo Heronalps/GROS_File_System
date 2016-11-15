@@ -419,6 +419,16 @@ int i_write(Disk * disk, Inode *inode, char *buf, int size, int offset) {
       write_block( disk, block_to_write, data );
       bytes_written += bytes_to_write;
 
+      if (bytes_to_write < block_size) {
+        inode->f_size = std::max(
+          // if we didn't write to the end of the file
+          inode->f_size,
+          // if we wrote past the end of the file
+          inode->f_size - (inode->f_size % block_size) + bytes_to_write
+        );
+        save_inode(disk, inode);
+      }
+
       cur_block++;
     }
 
