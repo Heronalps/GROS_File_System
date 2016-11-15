@@ -196,13 +196,8 @@ int write(Disk * disk, const char* path, char *buf, int size, int offset) {
    return i_write(disk, inode, buf, size, offset);
 }
 
-int namei(Disk * disk, const char* path) {
-	//stub
-	return -1;
-}
-
 /**
- * Creates a file 
+ * Creates a file
  *
  * @param Disk*  disk     Disk containing the file system
  * @param Inode* inode    Inode of directory in which to place new file
@@ -218,7 +213,7 @@ int i_mknod(Disk *disk, Inode *inode, const char* filename) {
 }
 /* @param char*  path     FULL path (from root "/") to place the new file */
 int mknod(Disk * disk, const char* path) {
-	char *file = strrchr(path, '/'); //get filename this way
+	const char *file = strrchr(path, '/'); //get filename this way
 	if (file) { //not sure what to do otherwise
 		file = file + 1; //skip over delimiter
 	}
