@@ -366,6 +366,7 @@ int i_write(Disk * disk, Inode *inode, char *buf, int size, int offset) {
         }
         // relative index into single indirects
         block_to_write = siblock[block_to_write - 12];
+        si_index = block_to_write - 12;
       }
       /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
        * since ti_index, di_index, si_index, inode->f_block[13], inode->f_block[12]
@@ -393,9 +394,20 @@ int i_write(Disk * disk, Inode *inode, char *buf, int size, int offset) {
         )*block_size
       );
 
+      // we're in a single indirect block and the data block hasn't been allocated
+      if (si_index != -1 && block_to_write == -1) {
+        siblock[si_index] = allocate_data_block(disk);
+        block_to_write = siblock[si_index];
+        write_block(disk, si, (char*) siblock);
+      }
+
       // in a direct block
       if (cur_block < 12) {
-        block_to_write = inode->f_block[block_to_write];
+        block_to_write = inode->f_block[cur_block];
+        if (inode->f_block[cur_block] == -1) {
+          inode->f_block[cur_block] = allocate_data_block(disk);
+          block_to_write = inode->f_block[cur_block];
+        }
       }
 
       // if we are writing an entire block, we don't need to read, since we're
