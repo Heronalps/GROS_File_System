@@ -19,6 +19,7 @@
 #define DOUBLE_INDRCT 13        // index for double indirect data block
 #define TRIPLE_INDRCT 14        // index for triple indirect data block
 
+
 // the space at the end of the superblock data up until the end of the block
 #define SB_ILIST_SIZE ( BLOCK_SIZE - 9 * sizeof( int ) )
 
@@ -104,7 +105,8 @@ void fsck( Disk * disk );    // recover the file system
 
 
 /**
- * Checks list of allocated data blocks for duplicates, or appends block number
+ * Checks list of allocated data blocks for valid block number and duplicates,
+ *  appends block number to list if valid and not dup
  *
  * @param Disk *  disk           The disk containing the file system
  * @param int  *  allocd_blocks  The list of allocated data blocks

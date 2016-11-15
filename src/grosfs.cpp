@@ -71,10 +71,10 @@ void init_inodes( Disk * disk, int num_inode_blocks, int inodes_per_block ) {
     int     j;
     int     rel_inode_index;
     char    ibuf[ BLOCK_SIZE ];
-    int     num_inode;
+    int     inode_num;
     Inode * tmp;
 
-    num_inode      = 0;
+    inode_num            = 0;
     tmp            = new Inode();
     tmp -> f_links = 0;
 
@@ -87,7 +87,7 @@ void init_inodes( Disk * disk, int num_inode_blocks, int inodes_per_block ) {
         read_block( disk, i, ( char * ) ibuf );
 
         for( j = 0; j < inodes_per_block; j++ ) {
-            tmp -> f_inode_num = num_inode++;
+            tmp -> f_inode_num = inode_num++;
             rel_inode_index = j % inodes_per_block;
             std::memcpy( ( ( Inode * ) ibuf ) + rel_inode_index,
                          tmp,
@@ -191,7 +191,7 @@ void fsck( Disk * disk ) {
             if( links < 1 )
                 num_free_inodes++;
             else { // check if file or directory
-                if( inode -> f_acl ==  )
+                if( inode -> f_acl == 1 )
                     // check for valid data block #s, duplicate allocated data blocks
                     while( k < 15 && ! dup ) {
                         if( k < SINGLE_INDRCT ) {
@@ -293,6 +293,10 @@ void fsck( Disk * disk ) {
  *
  * @param  Disk *  disk           The disk containing the file system
  * @param  int  *  allocd_blocks  The list of allocated data blocks
+<<<<<<< HEAD
+=======
+ * @param  int     num_blocks     The maximum possible allocated data blocks
+>>>>>>> f788a82... switching branches to pull/rebase
  * @param  int     block_num      The block to check against list
  * @return int                    0 success, 1 found invalid block #, duplicate
  */
@@ -500,11 +504,11 @@ void free_inode( Disk * disk, Inode * inode ) {
     int          direct_blocks;
     int          done;
     int          num_blocks;
-    int          nums_per_block;
+    int          n_indirects;
 
     num_blocks     = ( int ) ceil( inode -> f_size / BLOCK_SIZE );
     direct_blocks  = std::min( SINGLE_INDRCT, num_blocks );
-    nums_per_block = BLOCK_SIZE / sizeof( int );
+    n_indirects = BLOCK_SIZE / sizeof( int );
 
     // deallocate the direct blocks
     done = free_blocks_list( disk, ( int * ) inode -> f_block, direct_blocks );
@@ -513,7 +517,7 @@ void free_inode( Disk * disk, Inode * inode ) {
     if( ! done ) {
         // read in the block of redirects to buffer
         read_block( disk, inode -> f_block[ SINGLE_INDRCT ], sbuf );
-        done = free_blocks_list( disk, ( int * ) sbuf, nums_per_block );
+        done = free_blocks_list( disk, ( int * ) sbuf, n_indirects );
     }
 
     // deallocate the double indirect blocks
@@ -523,7 +527,7 @@ void free_inode( Disk * disk, Inode * inode ) {
 
         for( i = 0; i < BLOCK_SIZE / sizeof( int ); i++ ) {
             read_block( disk, ( int ) dbuf[ i ], sbuf ); // single indirects
-            done = free_blocks_list( disk, ( int * ) sbuf, nums_per_block );
+            done = free_blocks_list( disk, ( int * ) sbuf, n_indirects );
             if( done ) break;
         }
     }
@@ -532,17 +536,18 @@ void free_inode( Disk * disk, Inode * inode ) {
     if( ! done ) {
         read_block( disk, inode -> f_block[ TRIPLE_INDRCT ], tbuf ); // triple
 
-        for( i = 0; i < nums_per_block; i++ ) {
+        for( i = 0; i < n_indirects; i++ ) {
             read_block( disk, tbuf[ i ], dbuf ); // double indirects
 
-            for( j = 0; j < nums_per_block; j++ ) {
+            for( j = 0; j < n_indirects; j++ ) {
                 read_block( disk, dbuf[ i ], sbuf ); // single indirects
-                done = free_blocks_list( disk, ( int * ) sbuf, nums_per_block );
+                done = free_blocks_list( disk, ( int * ) sbuf, n_indirects );
                 if( done ) break;
             }
             if( done ) break;
         }
     }
+    // try to put inode number on free list
     update_free_list( disk, inode -> f_inode_num );
 }
 
