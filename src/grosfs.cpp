@@ -407,11 +407,10 @@ Inode * find_free_inode( Disk * disk ) {
     if( i < SB_ILIST_SIZE ) {
         free_inode_index = superblock -> free_inodes[ i ];
         superblock -> free_inodes[ i ] = -1;
-    }
-    else {
-        // fetch more inodes from the datablocks to update free list
-        repopulate_ilist( disk, free_inode_index );
-        find_free_inode( disk );
+
+        // repopulate free list if allocating last inode in list
+        if( i == SB_ILIST_SIZE - 1 )
+            repopulate_ilist( disk, free_inode_index );
     }
 
     // save the superblock to disk with updated free ilist
@@ -620,26 +619,25 @@ void free_inode( Disk * disk, Inode * inode ) {
  */
 void update_free_list( Disk * disk, int inode_num ) {
     char         buf[ BLOCK_SIZE ];
+    int          i;
     Superblock * superblock;
-
-    // start at second to last to leave last entry as starting index for repopulation
-    int          i = SB_ILIST_SIZE - 2;
 
     read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
-    // scan free inode list backward for -1 or indices greater than inode's
-    while( i >= 0 && superblock -> free_inodes[ i ] > 0 ) {
-        // if entry is less than inode_num, replace w/ with inode num if empty
-        //  or next entry if just lower inode number
-        if( superblock -> free_inodes[ i ] < 0 ) {
+    i          = 0;
+//    i          = SB_ILIST_SIZE - 2;
+
+    // scan list for empty space
+    while( i < SB_ILIST_SIZE && superblock -> free_inodes[ i ] > 0 )
+        i++;
+    if( i < SB_ILIST_SIZE )
+        superblock -> free_inodes[ i ] = inode_num;
+    else { // scan list for inode numbers greater than inode_num
+        i = 0;
+        while( i < SB_ILIST_SIZE && superblock -> free_inodes[ i ] < inode_num )
+            i++;
+        if( i < SB_ILIST_SIZE )
             superblock -> free_inodes[ i ] = inode_num;
-            i = 0;
-        }
-        else if( superblock -> free_inodes[ i ] < inode_num ) {
-            superblock -> free_inodes[ i + 1 ] = inode_num;
-            i = 0;
-        }
-        i--;
     }
     superblock -> fs_num_used_inodes--;
     // update superblock on disk
