@@ -578,7 +578,14 @@ int mkdir( Disk * disk, const char * path ) {
 
 
 /* @param Inode * dir       directory instance */
-DirEntry * readdir( Inode * dir ) {
+DirEntry * readdir( Disk * disk, Inode * dir ) {
     // STUB
     return NULL;
+}
+
+
+/* @param char*  path       FULL path (from root "/") to the file */
+int unlink( Disk * disk, const char * path ) {
+    // STUB
+    return 0;
 }

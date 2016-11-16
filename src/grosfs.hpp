@@ -105,6 +105,39 @@ void fsck( Disk * disk );    // recover the file system
 
 
 /**
+ * Finds path from root to inode, backwards
+ *
+ * @param   Disk        * disk        The disk containing the file system
+ * @param   Inode       * parent_dir  The parent directory to traverse
+ * @param   char        * filename    The file name to get path for
+ * @return  const char  *             String path to inode number
+ */
+const char * pwd( Disk * disk, Inode * parent_dir, char * filename );
+
+
+/**
+ * Recursively traverse path back to root
+ *
+ * @param   Disk  * disk   The disk containing the file system
+ * @param   char  * path   The current filepath
+ * @param   Inode * dir    The directory to traverse
+ * @return  char  *        Directory name
+ */
+char * get_path_to_root( Disk * disk, char * path, Inode * dir );
+
+
+/**
+ * Checks for inode number in parent inode
+ *
+ * @param   Disk * disk          The disk containing the file system
+ * @param   int    parent_num    The parent inode to check
+ * @param   int    inode_num     The inode number to search for
+ * @return  int                  1 success, 0 failure
+ */
+int check_parent( Disk * disk, int parent_num, int inode_num );
+
+
+/**
  * Checks for inode number in directory tree
  *
  * @param   Disk *  disk           The disk containing the file system

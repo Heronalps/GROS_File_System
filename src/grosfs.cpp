@@ -240,25 +240,24 @@ void fsck( Disk * disk ) {
                     } // done scanning all data blocks in inode
                 }
                 else if( is_dir( inode -> f_acl ) ) {
-                    int inode_num;
-                    int parent_num;
+                    DirEntry * direntry;
 
-                    parent_num = 0;
-                    valid      = 1;
+                    // check first entry refers to own inode num,
+                    //  check second entry is valid parent,
+                    //  check there exists a path to it in the file system
+                    if( readdir( disk, inode ) -> inode_num == inode -> f_inode_num
+                        && check_parent( disk,
+                                         readdir( disk, inode ) -> inode_num,
+                                         inode -> f_inode_num )
+                        && count_links( disk, inode -> f_inode_num ) > 0 ) {
 
-//                    TODO check correct parent inode number
-                    // check first entry is own inode num, second is parent,
-                    //  and there exists a path to it in the file system
-                    if( readdir( inode ) -> inode_num != inode -> f_inode_num
-                        || readdir( inode ) -> inode_num != parent_num
-                        || ! count_links( disk, inode -> f_inode_num ) )
-                        valid = 0;
-
-                    // check for valid inodes in entries
-                    while( ( inode_num = readdir( inode ) -> inode_num ) && valid ) {
-                        valid = ( inode_num > 0
-                                  && inode_num < superblock -> fs_num_inodes
-                                  && get_inode( disk, inode_num ) -> f_links > 0 );
+                        // check for valid inodes in entries
+                        while( ( direntry = readdir( disk, inode ) ) ) {
+                            if( direntry -> inode_num < 1
+                                && direntry -> inode_num >= superblock -> fs_num_inodes
+                                && get_inode( disk, direntry -> inode_num ) -> f_links < 1 )
+                                unlink( disk, pwd( disk, inode, direntry -> filename ) );
+                        }
                     }
                 }
             }
@@ -286,13 +285,99 @@ void fsck( Disk * disk ) {
 }
 
 
+// TODO test function, probable memory leaks
+/**
+ * Finds path from root to inode, backwards
+ *
+ * @param   Disk        * disk        The disk containing the file system
+ * @param   Inode       * parent_dir  The parent directory to traverse
+ * @param   char        * filename    The file name to get path for
+ * @return  const char  *             String path to inode number
+ */
+const char * pwd( Disk * disk, Inode * parent_dir, char * filename ) {
+    char * rootpath;
+    char * filepath;
+
+    rootpath = ( char * ) calloc( FILENAME_MAX_LENGTH, sizeof( char ) );
+    rootpath = get_path_to_root( disk, rootpath, parent_dir );
+    filepath = ( char * ) calloc( strlen( rootpath ) + strlen( filename ),
+                                  sizeof( char ) );
+    strncpy( rootpath, filepath, strlen( rootpath ) );
+    strncat( filepath, filename, strlen( filename ) );
+
+    free( rootpath );
+
+    return filepath;
+}
+
+
+// TODO test function, probable memory leaks
+/**
+ * Recursively traverse path back to root
+ *
+ * @param   Disk  * disk   The disk containing the file system
+ * @param   char  * path   The current filepath
+ * @param   Inode * dir    The directory to traverse
+ * @return  char  *        Directory name
+ */
+char * get_path_to_root( Disk * disk, char * filepath, Inode * dir ) {
+    DirEntry * dir_inode;
+    char     * path;
+
+    // pass over directory entry pointing to self
+    readdir( disk, dir );
+    // parent directory entry
+    dir_inode = readdir( disk, dir );
+
+    // allocate char array big enough for paths + slash + null terminator
+    path = ( char * ) calloc( strlen( filepath )
+                              + strlen( dir_inode -> filename )
+                              + 2,
+                              sizeof( char ) );
+    strncpy( path, filepath, strlen( filepath ) );
+    strncat( path, dir_inode -> filename, strlen( dir_inode -> filename ) );
+
+    // recurse until root
+    if( dir_inode -> inode_num > 0 ) {
+        // only add slash if not at root
+        strncat( path, ( char * ) "/", 1 );
+        get_path_to_root( disk, path, get_inode( disk, dir_inode -> inode_num ) );
+    }
+
+    free( filepath );
+    return path;
+}
+
+
+// TODO test function
+/**
+ * Checks for inode number in parent
+ *
+ * @param   Disk *  disk           The disk containing the file system
+ * @param   int     parent_num     The parent inode number to look through
+ * @param   int     inode_num      The inode number to check for
+ * @return  int                    1 confirmed parent, 0 failure
+ */
+int check_parent( Disk * disk, int parent_num, int inode_num ) {
+    int     dir_num;
+    int     is_parent = 0;
+    Inode * parent    = get_inode( disk, parent_num );
+
+    if( is_dir( parent -> f_acl ) ) {
+        while( ( dir_num = readdir( disk, parent ) -> inode_num ) && ! is_parent )
+            is_parent = ( dir_num == inode_num );
+    }
+    return is_parent;
+}
+
+
 // TODO test function ( + recursive helper )
 /**
  * Checks for inode number in directory tree
  *
- * @param  Disk *  disk           The disk containing the file system
- * @param  int     inode_num      The inode number to count links for
- * @param  int                    The number of links in tree
+ * @param   Disk *  disk           The disk containing the file system
+ * @param   int     inode_num      The inode number to count links for
+ * @return  int                    The number of links in tree
  */
 int count_links( Disk * disk, int inode_num ) {
     int         links = 0;
@@ -303,7 +388,6 @@ int count_links( Disk * disk, int inode_num ) {
     read_block( disk, 1, ( char * ) buf );
     dir = ( Inode * ) buf;
 
-//    TODO check recursion
     links += traverse_dir( disk, dir, inode_num );
 
     return links;
@@ -321,7 +405,7 @@ int traverse_dir( Disk * disk, Inode * dir, int inode_num ) {
     int     dir_inode_num;
     Inode * inode;
 
-    while( ( dir_inode_num = readdir( dir ) -> inode_num ) ) {
+    while( ( dir_inode_num = readdir( disk, dir ) -> inode_num ) ) {
         inode = get_inode( disk, dir_inode_num  );
         if( is_dir( inode -> f_acl ) )
             traverse_dir( disk, inode, inode_num );
