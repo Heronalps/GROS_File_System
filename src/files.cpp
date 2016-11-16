@@ -20,7 +20,7 @@ void mkroot( Disk * disk ) {
     root_i = new_inode(disk); // should be inode 0
     // !! root_i->f_inode_num == 0 !!
     root_i->f_acl = 0x1ff; // 01 111 111 111
-    root_i->f_links = 1;
+    root_i->f_links = 2;
 
     root[0].inode_num = root_i->f_inode_num;
     strcpy(root[0].filename, ".");
@@ -477,10 +477,15 @@ int ensure_size(Disk * disk, const char* path, int size) {
  */
 int i_mknod(Disk *disk, Inode *inode, const char* filename) {
 	Inode *new_file_inode = new_inode(disk);
+	new_file_inode->f_links = 1;
+	
 	DirEntry *direntry = new DirEntry();
 	direntry->inode_num = new_file_inode->f_inode_num;
 	strcpy(direntry->filename, filename);
+	
 	i_write(disk, inode, (char *)direntry, sizeof(DirEntry), inode->f_size);
+	save_inode(disk, new_file_inode);
+	delete new_file_inode;
 	return direntry->inode_num;
 }
 /* @param char*  path     FULL path (from root "/") to place the new file */
@@ -495,5 +500,50 @@ int mknod(Disk * disk, const char* path) {
 	new_path[index - 1] = '\0'; // cuts off filename
 	int inode_num = namei(disk, new_path);
 	Inode *inode = get_inode(disk, inode_num);
+	delete[] new_path;
 	return i_mknod(disk, inode, file);
+}
+
+/**
+ * Creates a directory with two entries (. and ..)
+ *
+ * @param Disk*  disk     Disk containing the file system
+ * @param Inode* inode    Inode of directory in which to place new directory
+ * @param char*  dirname  Name of new directory
+ */
+int i_mkdir(Disk *disk, Inode *inode, const char* dirname) {
+	Inode *new_dir_inode = new_inode(disk);
+	new_dir_inode->f_links = 2;
+	
+	DirEntry entries[2];
+	entries[0].inode_num = new_dir_inode->f_inode_num;
+    strcpy(entries[0].filename, ".");
+    entries[1].inode_num = inode->f_inode_num;
+    strcpy(entries[1].filename, "..");
+    
+	DirEntry *direntry = new DirEntry();
+	direntry->inode_num = new_dir_inode->f_inode_num;
+	strcpy(direntry->filename, dirname);
+	i_write(disk, inode, (char *)direntry, sizeof(DirEntry), inode->f_size);
+	
+    i_write(disk, new_dir_inode, (char *)entries, 2 * sizeof(DirEntry), 0);
+    save_inode(disk, new_dir_inode);
+    delete new_dir_inode;
+    
+	return direntry->inode_num;
+}
+/* @param char*  path     FULL path (from root "/") to place the new directory */
+int mkdir(Disk * disk, const char* path) {
+	const char *dir = strrchr(path, '/'); //get filename this way
+	if (dir) { //not sure what to do otherwise
+		dir = dir + 1; //skip over delimiter
+	}
+	char *new_path = new char[strlen(path) + 1];
+	strcpy(new_path, path);
+	int index = (int)(dir - path);
+	new_path[index - 1] = '\0'; // cuts off filename
+	int inode_num = namei(disk, new_path);
+	Inode *inode = get_inode(disk, inode_num);
+	delete[] new_path;
+	return i_mkdir(disk, inode, dir);
 }
