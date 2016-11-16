@@ -99,6 +99,7 @@ void init_inodes( Disk * disk, int num_inode_blocks, int inodes_per_block ) {
 }
 
 
+// TODO test function
 /**
  * Verifies and corrects all file system information
  *  - Ensures all data blocks marked as "used" appear in an inode
@@ -139,7 +140,7 @@ void fsck( Disk * disk ) {
     superblock   = ( Superblock * ) buf;
     allocd_blocks = ( int * ) calloc( superblock -> fs_num_blocks, sizeof( int ) );
 
-    num_free_blocks  = superblock -> fs_num_blocks;
+    num_free_blocks  = 0;
     num_free_inodes  = 0;
     num_inode_blocks = ( int ) ceil( ( superblock -> fs_disk_size
                                        / superblock -> fs_block_size )
@@ -156,17 +157,6 @@ void fsck( Disk * disk ) {
         exit( -1 );
     }
 
-//  check inode for:
-//      - link count (look at entire dir tree and calculate all links)
-//              -- put in lost + found if found count is 0
-//              -- if incorrect count, replace with found count
-//      - dup block ( how to handle dup, toss or prompt user )
-//              -- compare each block number to list of allocated blocks
-//              -- put on dup list or add to list of allocated blocks
-//      - bad block num
-//              -- within range for number of data blocks
-//      - inode size
-//              -- compares size with number of data blocks allocated
     // scan inode blocks
     for( i = 1; i <= num_inode_blocks; i++ ) {
         read_block( disk, i, ( char * ) buf );
@@ -179,18 +169,21 @@ void fsck( Disk * disk ) {
             size  = 0;
             valid = 1;
 
-            // check inode number in bounds, link count not corrupt
+            // check inode number in bounds, correct link count
             if( inode -> f_inode_num < 1
                 || inode -> f_inode_num > superblock -> fs_num_inodes
-                || ( links < 1 && inode -> f_links > 0 ) )
+                || ( links < 1 && inode -> f_links > 0 ) ) {
                 perror( "Corrupt inode" );
+                free_inode( disk, inode );
+                valid = 0;
+            }
             else if( links != inode -> f_links ) // update if wrong count
                 inode -> f_links = links;
 
             // increment free inode counter if no links
             if( links < 1 )
                 num_free_inodes++;
-            else {
+            else if( valid ) {
                 if( is_file( inode -> f_acl ) ) {
                     // check for valid data block #s, duplicate allocated blocks
                     while( k < 15 && valid ) {
@@ -247,12 +240,26 @@ void fsck( Disk * disk ) {
                     } // done scanning all data blocks in inode
                 }
                 else if( is_dir( inode -> f_acl ) ) {
-//          TODO - check directory data blocks for
-//              -- pointing to unallocated or out of range inode #s, remove entries
-//              -- correct directory entries for '.' and '..'
-//                - '.' must be first entry, reference to itself
-//                - '..' must be second entry, reference to parent
-//              -- exists within file system path structure, else lost + found
+                    int inode_num;
+                    int parent_num;
+
+                    parent_num = 0;
+                    valid      = 1;
+
+//                    TODO check correct parent inode number
+                    // check first entry is own inode num, second is parent,
+                    //  and there exists a path to it in the file system
+                    if( readdir( inode ) -> inode_num != inode -> f_inode_num
+                        || readdir( inode ) -> inode_num != parent_num
+                        || ! count_links( disk, inode -> f_inode_num ) )
+                        valid = 0;
+
+                    // check for valid inodes in entries
+                    while( ( inode_num = readdir( inode ) -> inode_num ) && valid ) {
+                        valid = ( inode_num > 0
+                                  && inode_num < superblock -> fs_num_inodes
+                                  && get_inode( disk, inode_num ) -> f_links > 0 );
+                    }
                 }
             }
             // check file size matches # bytes in inode
@@ -261,14 +268,16 @@ void fsck( Disk * disk ) {
         } // done scanning all inodes in block
     } // done scanning all inode blocks
 
-    // check num inodes less than allowable amount in system
+    // check total inodes less than allowable amount in system
     if( superblock -> fs_num_used_inodes + num_free_inodes
         > superblock -> fs_num_inodes ) {
         perror( "Corrupt inodes in file system" );
         exit( -1 );
     }
 
-    // check all blocks accounted for
+    // check all blocks properly accounted for
+    while( num_free_blocks < superblock -> fs_num_blocks
+           && allocd_blocks[ num_free_blocks++ ] > 0 );
     if( superblock -> fs_num_used_blocks + num_free_blocks
         > superblock -> fs_num_blocks ) {
         perror( "Corrupt data blocks in file system" );
@@ -277,6 +286,7 @@ void fsck( Disk * disk ) {
 }
 
 
+// TODO test function ( + recursive helper )
 /**
  * Checks for inode number in directory tree
  *
@@ -308,21 +318,22 @@ int count_links( Disk * disk, int inode_num ) {
  * @param  int     inode_num      The inode number to count links for
  */
 int traverse_dir( Disk * disk, Inode * dir, int inode_num ) {
-    DirEntry * direntry;
-    Inode    * inode;
+    int     dir_inode_num;
+    Inode * inode;
 
-    while( ( direntry = readdir( dir ) ) ) {
-        inode = get_inode( disk, direntry -> inode_num );
+    while( ( dir_inode_num = readdir( dir ) -> inode_num ) ) {
+        inode = get_inode( disk, dir_inode_num  );
         if( is_dir( inode -> f_acl ) )
             traverse_dir( disk, inode, inode_num );
 
-        if( direntry -> inode_num == inode_num )
+        if( dir_inode_num == inode_num )
             return 1;
     }
     return 0;
 }
 
 
+// TODO test function
 /**
  * Checks for valid block number and against list of allocated data blocks for
  *  duplicates, appends block number to allocated list if valid and not dup
@@ -390,7 +401,7 @@ Inode * find_free_inode( Disk * disk ) {
     }
 
     // loop through superblock free inode bitmap to find first non-negative
-    while(i < SB_ILIST_SIZE && superblock -> free_inodes[ i ] < 0 )
+    while( i < SB_ILIST_SIZE && superblock -> free_inodes[ i ] < 0 )
         i++;
 
     if( i < SB_ILIST_SIZE ) {
@@ -457,7 +468,7 @@ void repopulate_ilist( Disk * disk, int inode_index ) {
 /**
  * Returns a new allocated inode given first free inode number from find_free_inode
  *
- * @param  Disk* disk    The disk that contains the file system
+ * @param  Disk * disk    The disk that contains the file system
  */
 Inode * new_inode( Disk * disk ) {
     Inode * inode           = find_free_inode( disk );
@@ -544,15 +555,15 @@ int save_inode( Disk * disk, Inode * inode ) {
  * @param Inode *  inode  The inode to deallocate
  */
 void free_inode( Disk * disk, Inode * inode ) {
-    char         sbuf[ BLOCK_SIZE ];
-    char         dbuf[ BLOCK_SIZE ];
-    char         tbuf[ BLOCK_SIZE ];
-    int          i;
-    int          j;
-    int          direct_blocks;
-    int          done;
-    int          num_blocks;
-    int          n_indirects;
+    char sbuf[ BLOCK_SIZE ];
+    char dbuf[ BLOCK_SIZE ];
+    char tbuf[ BLOCK_SIZE ];
+    int  i;
+    int  j;
+    int  direct_blocks;
+    int  done;
+    int  num_blocks;
+    int  n_indirects;
 
     num_blocks     = ( int ) ceil( inode -> f_size / BLOCK_SIZE );
     direct_blocks  = std::min( SINGLE_INDRCT, num_blocks );
@@ -600,6 +611,7 @@ void free_inode( Disk * disk, Inode * inode ) {
 }
 
 
+// TODO test function
 /**
  * Update free list with freed inode number, if space or higher inode numbers
  *
@@ -629,6 +641,7 @@ void update_free_list( Disk * disk, int inode_num ) {
         }
         i--;
     }
+    superblock -> fs_num_used_inodes--;
     // update superblock on disk
     write_block( disk, 0, ( char * ) superblock );
 }
