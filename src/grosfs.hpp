@@ -19,7 +19,6 @@
 #define DOUBLE_INDRCT 13        // index for double indirect data block
 #define TRIPLE_INDRCT 14        // index for triple indirect data block
 
-
 // the space at the end of the superblock data up until the end of the block
 #define SB_ILIST_SIZE ( BLOCK_SIZE - 9 * sizeof( int ) )
 
@@ -102,6 +101,26 @@ void init_inodes( Disk * disk, int num_inode_blocks, int inode_per_block );
  * @param Disk * disk    The disk that contains the file system
  */
 void fsck( Disk * disk );    // recover the file system
+
+
+/**
+ * Checks for inode number in directory tree
+ *
+ * @param   Disk *  disk           The disk containing the file system
+ * @param   int     inode_num      The inode number to count links for
+ * @return  int                    The number of links in tree
+ */
+int count_links( Disk * disk, int inode_num );
+
+
+/**
+ * Traverses directory to recursively search for inode number
+ *
+ * @param  Disk  * disk           The disk containing the file system
+ * @param  Inode * dir            The directory to traverse
+ * @param  int     inode_num      The inode number to count links for
+ */
+int traverse_dir( Disk * disk, Inode * dir, int inode_num );
 
 
 /**
@@ -205,6 +224,11 @@ int allocate_data_block( Disk * disk );
  */
 int free_blocks_list( Disk * disk, int * block_list, int n );
 
-// read / write data blocks through disk (read_block, write_block)
+
+int is_file( short acl );
+
+
+int is_dir( short acl );
+
 
 #endif

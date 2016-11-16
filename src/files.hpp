@@ -13,8 +13,8 @@
 #define FILENAME_MAX_LENGTH 255
 
 typedef struct _direntry {
-  int inode_num;  /* inode of file */
-  char filename[FILENAME_MAX_LENGTH]; /* the filename */
+    int  inode_num;  /* inode of file */
+    char filename[ FILENAME_MAX_LENGTH ]; /* the filename */
 } DirEntry;
 
 
@@ -26,6 +26,7 @@ typedef struct _direntry {
  */
 void mkroot( Disk * disk );
 
+
 /**
  * Returns the inode number of the file corresponding to the given path
  *
@@ -34,6 +35,7 @@ void mkroot( Disk * disk );
  */
 int namei( Disk * disk, const char * path );
 
+
 /**
  * Creates a file
  *
@@ -41,9 +43,12 @@ int namei( Disk * disk, const char * path );
  * @param Inode* inode    Inode of directory in which to place new file
  * @param char*  filename  Name of new file
  */
-int i_mknod(Disk *disk, Inode *inode, const char* filename);
+int i_mknod( Disk * disk, Inode * inode, const char * filename );
+
+
 /* @param char*  path     FULL path (from root "/") to place the new file */
-int mknod(Disk * disk, const char* path);
+int mknod( Disk * disk, const char * path );
+
 
 /**
  * Creates a directory with two entries (. and ..)
@@ -54,8 +59,10 @@ int mknod(Disk * disk, const char* path);
  */
 int i_mkdir( Disk * disk, Inode * inode, const char * dirname );
 
+
 /* @param char*  path     FULL path (from root "/") to place the new directory */
 int mkdir( Disk * disk, const char * path );
+
 
 /**
  * Removes a directory and decrements all link counts for all files in directory
@@ -68,8 +75,10 @@ int mkdir( Disk * disk, const char * path );
  */
 int i_rmdir( Disk * disk, Inode * inode, const char * dirname );
 
+
 /* @param char*  path     FULL path (from root "/") to directory the remove */
 int rmdir( Disk * disk, const char * path );
+
 
 /**
  * Removes a file or directory. If the file is a directory, calls rmdir.
@@ -80,8 +89,10 @@ int rmdir( Disk * disk, const char * path );
  */
 int i_unlink( Disk * disk, Inode * inode, const char * filename );
 
+
 /* @param char*  path       FULL path (from root "/") to the file */
 int unlink( Disk * disk, const char * path );
+
 
 /**
  * Renames a file or directory
@@ -97,6 +108,7 @@ int i_rename( Disk * disk, Inode * inode, const char * oldname,
 /* @param char*  path       FULL path (from root "/") to the file */
 int rename( Disk * disk, const char * path, const char * newname );
 
+
 /**
  * Reads `size` bytes at `offset` offset bytes from file corresponding
  *  to given Inode on the given disk into given buffer
@@ -110,8 +122,10 @@ int rename( Disk * disk, const char * path, const char * newname );
  */
 int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset );
 
+
 /* @param char*  path     FULL path (from root "/") to the file */
 int read( Disk * disk, const char * path, char * buf, int size, int offset );
+
 
 /**
  * Writes `size` bytes (at `offset` bytes from 0) into file
@@ -126,6 +140,7 @@ int read( Disk * disk, const char * path, char * buf, int size, int offset );
  */
 int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset );
 
+
 /* @param char*  path     FULL path (from root "/") to the file */
 int write( Disk * disk, const char * path, char * buf, int size, int offset );
 
@@ -138,8 +153,10 @@ int write( Disk * disk, const char * path, char * buf, int size, int offset );
  */
 int i_truncate( Disk * disk, Inode * inode, int size );
 
+
 /* @param char*  path     FULL path (from root "/") to the file */
 int truncate( Disk * disk, const char * path, int size );
+
 
 /**
  * Ensures that a file is at least `size` bytes long. If it is already
@@ -151,15 +168,21 @@ int truncate( Disk * disk, const char * path, int size );
  * @param Inode* inode    Inode corresponding to the file to resize
  * @param int    size     Desired file size
  */
-int i_ensure_size(Disk * disk, Inode *inode, int size);
+int i_ensure_size( Disk * disk, Inode * inode, int size );
+
+
 /* @param char*  path     FULL path (from root "/") to the file */
-int ensure_size(Disk * disk, const char* path, int size);
+int ensure_size( Disk * disk, const char * path, int size );
+
+
+/* @param Inode * dir       directory instance */
+DirEntry * readdir( Inode * dir );
+
 
 /*
     namei: get path to filename
     mkdir: makes a directory
     mknod: makes a file
-    readdir: reads a directory
     unlink: removes a file or directory
     open/close: opens/closes a file
     read/write: reads/writes a file
