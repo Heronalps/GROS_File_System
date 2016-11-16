@@ -510,6 +510,7 @@ int i_mknod( Disk * disk, Inode * inode, const char * filename ) {
     return direntry -> inode_num;
 }
 
+
 /* @param char*  path     FULL path (from root "/") to place the new file */
 int mknod( Disk * disk, const char * path ) {
     const char * file = strrchr( path, '/' ); // get filename this way
@@ -525,6 +526,7 @@ int mknod( Disk * disk, const char * path ) {
     delete[] new_path;
     return i_mknod( disk, inode, file );
 }
+
 
 /**
  * Creates a directory with two entries (. and ..)
@@ -556,6 +558,8 @@ int i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
 
     return direntry -> inode_num;
 }
+
+
 /* @param char*  path     FULL path (from root "/") to place the new directory */
 int mkdir( Disk * disk, const char * path ) {
     const char * dir = strrchr( path, '/' ); //get filename this way
@@ -570,4 +574,11 @@ int mkdir( Disk * disk, const char * path ) {
     Inode * inode = get_inode( disk, inode_num );
     delete[] new_path;
     return i_mkdir( disk, inode, dir );
+}
+
+
+/* @param Inode * dir       directory instance */
+DirEntry * readdir( Inode * dir ) {
+    // STUB
+    return NULL;
 }

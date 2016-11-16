@@ -10,24 +10,24 @@
 void make_fs( Disk * disk ) {
     int i;
 
-    Superblock * superblock             = new Superblock();
-    superblock -> fs_disk_size          = disk -> size;
-    superblock -> fs_block_size         = BLOCK_SIZE;
-    superblock -> fs_inode_size         = sizeof( Inode );
-    int num_blocks                      = superblock -> fs_disk_size /
-                                          superblock -> fs_block_size;
-    int num_inode_blocks                = ( int ) ceil( num_blocks * INODE_BLOCKS );
-    int inode_per_block                 = ( int ) floor( superblock -> fs_block_size
-                                                         / superblock -> fs_inode_size );
-    superblock -> fs_num_blocks         = ( int ) floor( num_blocks * DATA_BLOCKS );
-    superblock -> fs_num_inodes         = num_inode_blocks * inode_per_block;
-    superblock -> fs_num_block_groups   = ( int ) ceil( superblock -> fs_num_blocks
-                                                        / superblock -> fs_block_size );
-    superblock -> fs_num_used_inodes    = 0;
-    superblock -> fs_num_used_blocks    = 0;
+    Superblock * superblock           = new Superblock();
+    superblock -> fs_disk_size        = disk -> size;
+    superblock -> fs_block_size       = BLOCK_SIZE;
+    superblock -> fs_inode_size       = sizeof( Inode );
+    int num_blocks                    = superblock -> fs_disk_size /
+                                        superblock -> fs_block_size;
+    int num_inode_blocks              = ( int ) ceil( num_blocks * INODE_BLOCKS );
+    int inode_per_block               = ( int ) floor( superblock -> fs_block_size
+                                                       / superblock -> fs_inode_size );
+    superblock -> fs_num_blocks       = ( int ) floor( num_blocks * DATA_BLOCKS );
+    superblock -> fs_num_inodes       = num_inode_blocks * inode_per_block;
+    superblock -> fs_num_block_groups = ( int ) ceil( superblock -> fs_num_blocks
+                                                      / superblock -> fs_block_size );
+    superblock -> fs_num_used_inodes  = 0;
+    superblock -> fs_num_used_blocks  = 0;
 
     // the free_data_list starts at the first block after the superblock and all of the inodes
-    superblock -> first_data_block      = 1 + num_inode_blocks;
+    superblock -> first_data_block    = 1 + num_inode_blocks;
 
     // initialize inodes on disk
     init_inodes( disk, num_inode_blocks, inode_per_block );
@@ -116,29 +116,30 @@ void fsck( Disk * disk ) {
     char         sbuf[ BLOCK_SIZE ];
     char         dbuf[ BLOCK_SIZE ];
     char         tbuf[ BLOCK_SIZE ];
-    int          dup;
+    int          size;
+    int          valid;
+    int          links;
     int          i;
     int          j;
     int          k;
     int          l;
     int          m;
     int          n;
-    int          links;
-    int          size;
     int          inodes_per_block;
     int          num_inode_blocks;
     int          num_free_blocks;
     int          num_free_inodes;
     int          n_indirects;       // total indirect block # entries per block
+    int        * allocd_blocks;
     Inode      * inode;
     Superblock * superblock;
 
     read_block( disk, 0, buf );
     n_indirects  = BLOCK_SIZE / sizeof( int );
     superblock   = ( Superblock * ) buf;
-    int allocd_blocks[ superblock -> fs_num_blocks ];
+    allocd_blocks = ( int * ) calloc( superblock -> fs_num_blocks, sizeof( int ) );
 
-    num_free_blocks  = 0;
+    num_free_blocks  = superblock -> fs_num_blocks;
     num_free_inodes  = 0;
     num_inode_blocks = ( int ) ceil( ( superblock -> fs_disk_size
                                        / superblock -> fs_block_size )
@@ -155,7 +156,7 @@ void fsck( Disk * disk ) {
         exit( -1 );
     }
 
-//  calculate num_free_inodes, check inode for:
+//  check inode for:
 //      - link count (look at entire dir tree and calculate all links)
 //              -- put in lost + found if found count is 0
 //              -- if incorrect count, replace with found count
@@ -164,7 +165,6 @@ void fsck( Disk * disk ) {
 //              -- put on dup list or add to list of allocated blocks
 //      - bad block num
 //              -- within range for number of data blocks
-//    TODO ( how to get size of non full data block ? )
 //      - inode size
 //              -- compares size with number of data blocks allocated
     // scan inode blocks
@@ -175,9 +175,9 @@ void fsck( Disk * disk ) {
         for( j = 0; j < inodes_per_block; j++ ) {
             inode = ( ( Inode * ) buf ) + j;
             links = count_links( disk, inode -> f_inode_num );
-            size  = 0;
-            dup   = 0;
             k     = 0;
+            size  = 0;
+            valid = 1;
 
             // check inode number in bounds, link count not corrupt
             if( inode -> f_inode_num < 1
@@ -192,56 +192,54 @@ void fsck( Disk * disk ) {
                 num_free_inodes++;
             else {
                 if( is_file( inode -> f_acl ) ) {
-                    // check for valid data block #s, duplicate allocated data blocks
-                    while( k < 15 && ! dup ) {
+                    // check for valid data block #s, duplicate allocated blocks
+                    while( k < 15 && valid ) {
                         if( k < SINGLE_INDRCT ) {
-                            dup = check_blocks( disk,
-                                                allocd_blocks,
-                                                inode -> f_block[ k++ ] );
+                            valid = check_blocks( disk,
+                                                  allocd_blocks,
+                                                  inode -> f_block[ k++ ] );
+                            size += valid;
                         }
                         else if( k == SINGLE_INDRCT ) {
-                            //                    TODO where to increment size
-                            size += BLOCK_SIZE;
                             read_block( disk, inode -> f_block[ k++ ], sbuf );
                             l = 0;
-                            while( l < n_indirects && ! dup ) {
-                                //                    TODO where to increment size
-                                size += BLOCK_SIZE;
-                                dup = check_blocks( disk, allocd_blocks, sbuf[ l++ ] );
+                            while( l < n_indirects && valid ) {
+                                valid = check_blocks( disk,
+                                                      allocd_blocks,
+                                                      sbuf[ l++ ] );
+                                size += valid;
                             }
                         }
                         else if( k == DOUBLE_INDRCT ) {
                             read_block( disk, inode -> f_block[ k++ ], dbuf );
                             l = 0;
-                            while( l < n_indirects && ! dup ) {
+                            while( l < n_indirects && valid ) {
                                 read_block( disk, ( int ) dbuf[ l++ ], sbuf );
                                 m = 0;
-                                while( m < n_indirects && ! dup ) {
-                                    //                   TODO where to increment size
-                                    size += BLOCK_SIZE;
-                                    dup = check_blocks( disk,
-                                                        allocd_blocks,
-                                                        sbuf[ m++ ] );
+                                while( m < n_indirects && valid ) {
+                                    valid = check_blocks( disk,
+                                                          allocd_blocks,
+                                                          sbuf[ m++ ] );
+                                    size += valid;
                                 }
                             }
                         }
                         else if( k == TRIPLE_INDRCT ) {
-                            //                   TODO where to increment size
-                            size += BLOCK_SIZE;
                             read_block( disk, inode -> f_block[ k++ ], tbuf );
                             l = 0;
-                            while( l < n_indirects && ! dup ) {
+                            while( l < n_indirects && valid ) {
                                 read_block( disk, ( int ) tbuf[ l++ ], dbuf );
                                 m = 0;
-                                while( m < n_indirects && ! dup ) {
-                                    read_block( disk, ( int ) dbuf[ m++ ], sbuf );
+                                while( m < n_indirects && valid ) {
+                                    read_block( disk,
+                                                ( int ) dbuf[ m++ ],
+                                                sbuf );
                                     n = 0;
-                                    while( n < n_indirects && ! dup ) {
-                                        //                   TODO where to increment size
-                                        size += BLOCK_SIZE;
-                                        dup = check_blocks( disk,
-                                                            allocd_blocks,
-                                                            sbuf[ n++ ] );
+                                    while( n < n_indirects && valid ) {
+                                        valid = check_blocks( disk,
+                                                              allocd_blocks,
+                                                              sbuf[ n++ ] );
+                                        size += valid;
                                     }
                                 }
                             }
@@ -257,11 +255,11 @@ void fsck( Disk * disk ) {
 //              -- exists within file system path structure, else lost + found
                 }
             }
-            // check file size matches # blocks allocated
+            // check file size matches # bytes in inode
             if( inode -> f_size != size )
                 inode -> f_size = size;
-        }
-    } // done scanning all inodes
+        } // done scanning all inodes in block
+    } // done scanning all inode blocks
 
     // check num inodes less than allowable amount in system
     if( superblock -> fs_num_used_inodes + num_free_inodes
@@ -269,17 +267,6 @@ void fsck( Disk * disk ) {
         perror( "Corrupt inodes in file system" );
         exit( -1 );
     }
-
-    // TODO calculate num_free_blocks
-    // - check all blocks marked as free are not claimed by any inodes
-    // - scan inode pointers, see if it's data blocks are marked used in bitmap
-    // scan all data blocks
-    for( i = 1; i < superblock -> fs_num_blocks; i++ ) {
-        read_block( disk, i, ( char * ) buf );
-
-
-    }
-
 
     // check all blocks accounted for
     if( superblock -> fs_num_used_blocks + num_free_blocks
@@ -349,8 +336,9 @@ int check_blocks( Disk * disk, int * allocd_blocks, int block_num ) {
     char         buf [ BLOCK_SIZE ];
     char         bbuf[ BLOCK_SIZE ];
     Superblock * superblock;
-    int          i    = 0;
-    int          size = 0;
+    int          i     = 0;
+    int          valid = 0;
+    int          size  = 0;
 
     read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
@@ -359,16 +347,27 @@ int check_blocks( Disk * disk, int * allocd_blocks, int block_num ) {
     if( block_num > 0 || block_num < superblock -> fs_num_blocks ) {
         // check if data block is marked used in bitmap
         read_block( disk, block_num % superblock -> fs_num_block_groups, bbuf );
-        if( is_bit_set( ( Bitmap * ) bbuf, block_num ) ) {
-            // loop until duplicate is found or add to list
-            while( i < superblock -> fs_num_blocks && ! size )
-            size = ( allocd_blocks[ i++ ] == block_num );
-        }
+        valid = is_bit_set( ( Bitmap * ) bbuf, block_num );
 
-        if( ! size && i >= superblock -> fs_num_blocks )
-            allocd_blocks[ i - 1 ] = block_num;
+        // loop until end of list or duplicate is found or add to list
+        while( i < superblock -> fs_num_blocks - 1
+               && allocd_blocks[ i ] > 0
+               && ( valid = allocd_blocks[ i ] != block_num ) )
+            i++;
+
+        // add to list if not duplicate and calculate size
+        if( valid ) {
+            allocd_blocks[ i ] = block_num;
+            read_block( disk, block_num, bbuf );
+
+            // calculate size of block
+//            TODO check properly detects end of file
+            while( size < BLOCK_SIZE && bbuf[ size / sizeof( char ) ] > 0 )
+                size += sizeof( char );
+        }
     }
-    return size;
+    // return 0 if invalid, else return size
+    return valid * size;
 }
 
 
@@ -557,7 +556,7 @@ void free_inode( Disk * disk, Inode * inode ) {
 
     num_blocks     = ( int ) ceil( inode -> f_size / BLOCK_SIZE );
     direct_blocks  = std::min( SINGLE_INDRCT, num_blocks );
-    n_indirects = BLOCK_SIZE / sizeof( int );
+    n_indirects    = BLOCK_SIZE / sizeof( int );
 
     // deallocate the direct blocks
     done = free_blocks_list( disk, ( int * ) inode -> f_block, direct_blocks );
@@ -611,7 +610,7 @@ void update_free_list( Disk * disk, int inode_num ) {
     char         buf[ BLOCK_SIZE ];
     Superblock * superblock;
 
-    // start at second to last to leave last entry as starting point for repopulation
+    // start at second to last to leave last entry as starting index for repopulation
     int          i = SB_ILIST_SIZE - 2;
 
     read_block( disk, 0, buf );
@@ -630,7 +629,8 @@ void update_free_list( Disk * disk, int inode_num ) {
         }
         i--;
     }
-//    TODO update superblock
+    // update superblock on disk
+    write_block( disk, 0, ( char * ) superblock );
 }
 
 
@@ -729,10 +729,13 @@ int allocate_data_block( Disk * disk ) {
 }
 
 
+// TODO test function
 int is_file( short acl ) {
     return ( ( acl << 13 ) & 0 );
 }
 
+
+// TODO test function
 int is_dir( short acl ) {
     return ( ( acl << 13 ) & 1 );
 }

@@ -24,8 +24,8 @@ Disk * open_disk() {
  * @param Disk *disk    The pointer to the disk to close
  */
 void close_disk( Disk * disk ) {
-    delete[] disk -> mem;
-    delete disk;
+    delete [] disk -> mem;
+    delete    disk;
 }
 
 /**
