@@ -1084,20 +1084,6 @@ TEST_CASE("An inode and all its own resources can be deallocated","[FileSystem]"
     //How to test an inode and its resources have been deallocated?
 }
 
-TEST_CASE("The number of links of an inode cab be returned","[FileSystem]") {
-    Inode * inode = new Inode();
-    
-    SECTION("inode has zero link"){
-        inode -> f_links = 0;
-        REQUIRE(has_links(inode) == 0);
-    }
-
-    SECTION("inode has more than one links") {
-        inode -> f_links = 2;
-        REQUIRE(has_links(inode) == 1);
-    }
-}
-
 TEST_CASE("A data block can be allocated","[FileSystem]") {
     Disk * disk = open_disk();
     make_fs(disk);
