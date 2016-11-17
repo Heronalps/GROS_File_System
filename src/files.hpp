@@ -9,6 +9,7 @@
 #include "grosfs.hpp"
 #include "disk.hpp"
 #include <cstring>
+#include <cstdio>
 
 #define FILENAME_MAX_LENGTH 255
 
