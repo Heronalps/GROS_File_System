@@ -952,7 +952,6 @@ TEST_CASE("An inode can be allocated","[FileSystem]") {
     Inode *block_inodes = (Inode*)buf;
     std::memcpy(ret_inode, &(block_inodes[rel_inode_index]), sizeof(Inode));
 
-    REQUIRE(typeid(*inode).name() == "Inode");
     REQUIRE(ret_inode->f_inode_num == inode->f_inode_num);
     //How to test the returned inode is allocated?
 
