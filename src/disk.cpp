@@ -11,9 +11,9 @@
  *  Disk *mem will be a char array of EMULATOR_SIZE items
  */
 Disk * open_disk() {
-    Disk * disk = new Disk();
+    Disk * disk  = new Disk();
     disk -> size = EMULATOR_SIZE;
-    disk -> mem = new char[EMULATOR_SIZE];
+    disk -> mem  = new char[ EMULATOR_SIZE ];
     return disk;
 }
 
@@ -24,8 +24,8 @@ Disk * open_disk() {
  * @param Disk *disk    The pointer to the disk to close
  */
 void close_disk( Disk * disk ) {
-    delete[] disk -> mem;
-    delete disk;
+    delete [] disk -> mem;
+    delete    disk;
 }
 
 /**
@@ -37,13 +37,13 @@ void close_disk( Disk * disk ) {
  *                        * Must be allocated to be size BLOCK_SIZE
  */
 int read_block( Disk * disk, int block_num, char * buf ) {
-    if( block_num < 0 ) {
+    if( block_num < 0 )
         return -1;
-    }
+
     int byte_offset = block_num * BLOCK_SIZE;
-    if( ( byte_offset + BLOCK_SIZE ) > disk -> size ) {
+    if( ( byte_offset + BLOCK_SIZE ) > disk -> size )
         return -1;
-    }
+
     std::memcpy( buf, ( disk -> mem + byte_offset ), BLOCK_SIZE );
     return 0;
 }
