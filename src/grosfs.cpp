@@ -890,7 +890,6 @@ TEST_CASE("A free inode can be found","[FileSystem]") {
     Superblock *    superblock = new Superblock();
     read_block( disk, 0, (char *) superblock );
 
-    REQUIRE(typeid(*inode).name() == "Inode");
     REQUIRE(superblock->free_inodes[0] == -1);
 
 }
@@ -925,7 +924,6 @@ TEST_CASE("An inode can be created", "[FileSystem]") {
     Inode * inode = new Inode();
     inode = new_inode(disk);
 
-    REQUIRE(typeid(*inode).name() == "Inode");
     REQUIRE(inode -> f_size == 0);
     REQUIRE(inode -> f_uid == 0);
     REQUIRE(inode -> f_acl == 0);
