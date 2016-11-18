@@ -35,7 +35,7 @@ void mkroot( Disk * disk );
 * @param Disk * disk  Disk containing the file system
 * @param char * path  Path to the file, starting from root "/"
 */
-int namei( Disk * disk, char * path );
+int namei( Disk * disk, const char * path );
 
 
 /**

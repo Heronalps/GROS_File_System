@@ -41,20 +41,25 @@ void mkroot( Disk * disk ) {
  * @param Disk * disk  Disk containing the file system
  * @param char * path  Path to the file, starting from root "/"
  */
-int namei( Disk * disk, char * path ) {
+int namei( Disk * disk, const char * path ) {
+    char     * filename;
     Inode    * dir;
     DirEntry * direntry;
 
-    dir  = get_inode( disk, 0 );
-    path = strtok( path, "/" );
+    // start at root
+    dir      = get_inode( disk, 0 );
+    // parse name from path
+    filename = strdup( path );
+    filename = strtok( filename, "/" );
 
-    // travese directory for name in path
-    while( ( direntry = readdir( disk, dir ) ) && path ) {
-        if( ! strcmp( direntry -> filename, path ) ) {
+    // travese directory for filename in path
+    while( ( direntry = readdir( disk, dir ) ) && filename ) {
+        if( ! strcmp( direntry -> filename, filename ) ) {
             dir  = get_inode( disk, direntry -> inode_num );
-            path = strtok( NULL, "/" );
+            filename = strtok( NULL, "/" );
         }
     }
+    free( filename );
     return dir -> f_inode_num;
 }
 
@@ -191,7 +196,6 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
     return bytes_read;
 }
 
-/* @param char*  path     FULL path (from root "/") to the file */
 int read( Disk * disk, const char * path, char * buf, int size, int offset ) {
     int inode_num = namei( disk, path );
     Inode * inode = get_inode( disk, inode_num );
@@ -483,7 +487,6 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
     return bytes_written;
 }
 
-/* @param char*  path     FULL path (from root "/") to the file */
 int write( Disk * disk, const char * path, char * buf, int size, int offset ) {
     int inode_num = namei( disk, path );
     Inode * inode = get_inode( disk, inode_num );
@@ -504,8 +507,7 @@ int i_ensure_size( Disk * disk, Inode * inode, int size ) {
     return -1; // stub
 }
 
-/* @param char*  path     FULL path (from root "/") to the file */
-int ensure_size( Disk * disk, const char * path, int size ) {
+int ensure_size( Disk * disk, char * path, int size ) {
     Inode * inode = get_inode( disk, namei( disk, path ) );
     return i_ensure_size( disk, inode, size );
 }
@@ -561,6 +563,7 @@ int mknod( Disk * disk, const char * path ) {
  * @param char  * dirname  Name of new directory
  */
 int i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
+    int        dir_num;
     DirEntry   entries[ 2 ];
     DirEntry * direntry      = new DirEntry();
     Inode    * new_dir_inode = new_inode( disk );
@@ -574,39 +577,54 @@ int i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
 
     direntry->inode_num = new_dir_inode->f_inode_num;
     strcpy( direntry->filename, dirname );
+    // add new direntry to current directory
     i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
              inode->f_size );
 
+    // add first entries to new directory
     i_write( disk, new_dir_inode, ( char * ) entries, 2 * sizeof( DirEntry ),
              0 );
+
+    // save directories back to disk
+    save_inode( disk, inode );
     save_inode( disk, new_dir_inode );
+    dir_num = direntry->inode_num;
 
     delete new_dir_inode;
-    return direntry->inode_num;
+    delete direntry;
+    return dir_num;
 }
 
 
 /* @param char*  path     FULL path (from root "/") to place the new directory */
 int mkdir( Disk * disk, const char * path ) {
     char       * new_path = new char[ strlen( path ) + 1 ];
-    const char * dir      = strrchr( path, '/' ); // get filename this way
+    const char * dir      = strrchr( path, '/' ); // get filename
 
-    if( dir )   // not sure what to do otherwise
-        dir++;  // skip over delimiter
+    // failed to get directory name from path
+    if( ! dir )
+        return 0;
+
+    dir++;  // skip over delimiter
 
     strcpy( new_path, path );
-    int index             = ( int ) ( dir - path );
-    new_path[ index - 1 ] = '\0'; // cuts off filename
-    Inode * inode         = get_inode( disk, namei( disk, new_path ) );
+    // add null terminator to end of filename
+//    TODO not sure what index is dir - path
+    new_path[ ( int ) ( dir - path ) - 1 ] = '\0';
+    Inode * inode = get_inode( disk, namei( disk, new_path ) );
 
     delete [] new_path;
     return i_mkdir( disk, inode, dir );
 }
 
 
+// TODO linux implementation takes in directory stream, otherwise not sure
+// TODO   how to know where at in directory and which entry to return next
 /* @param Inode * dir       directory instance */
 DirEntry * readdir( Disk * disk, Inode * dir ) {
-    // STUB
+    if( is_dir( dir->f_acl ) ) {
+        // STUB
+    }
     return NULL;
 }
 

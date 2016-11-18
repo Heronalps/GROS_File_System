@@ -138,23 +138,14 @@ int check_parent( Disk * disk, int parent_num, int inode_num );
 
 
 /**
- * Checks for inode number in directory tree
- *
- * @param   Disk *  disk           The disk containing the file system
- * @param   int     inode_num      The inode number to count links for
- * @return  int                    The number of links in tree
- */
-int count_links( Disk * disk, int inode_num );
-
-
-/**
  * Traverses directory to recursively search for inode number
  *
  * @param  Disk  * disk           The disk containing the file system
  * @param  Inode * dir            The directory to traverse
  * @param  int     inode_num      The inode number to count links for
+ * @param  int     links          The current number of links
  */
-int traverse_dir( Disk * disk, Inode * dir, int inode_num );
+int count_links( Disk * disk, Inode * dir, int inode_num, int links );
 
 
 /**

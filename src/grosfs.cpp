@@ -165,7 +165,7 @@ void fsck( Disk * disk ) {
         // scan individual inodes in block
         for( j = 0; j < inodes_per_block; j++ ) {
             inode = ( ( Inode * ) buf ) + j;
-            links = count_links( disk, inode->f_inode_num );
+            links = count_links( disk, inode, inode->f_inode_num, 0 );
             k     = 0;
             size  = 0;
             valid = 1;
@@ -372,49 +372,29 @@ int check_parent( Disk * disk, int parent_num, int inode_num ) {
 }
 
 
-// TODO test function ( + recursive helper )
-/**
- * Checks for inode number in directory tree
- *
- * @param   Disk *  disk           The disk containing the file system
- * @param   int     inode_num      The inode number to count links for
- * @return  int                    The number of links in tree
- */
-int count_links( Disk * disk, int inode_num ) {
-    int         links = 0;
-    char        buf [ BLOCK_SIZE ];
-    Inode    *  dir;
-
-    // traverse tree starting at root
-    read_block( disk, 1, ( char * ) buf );
-    dir = ( Inode * ) buf;
-
-    links += traverse_dir( disk, dir, inode_num );
-
-    return links;
-}
-
-
+// TODO test function
 /**
  * Traverses directory to recursively search for inode number
  *
  * @param  Disk  * disk           The disk containing the file system
  * @param  Inode * dir            The directory to traverse
  * @param  int     inode_num      The inode number to count links for
+ * @param  int     links          The current number of links
  */
-int traverse_dir( Disk * disk, Inode * dir, int inode_num ) {
+int count_links( Disk * disk, Inode * dir, int inode_num, int links ) {
     int     dir_inode_num;
     Inode * inode;
 
     while( ( dir_inode_num = readdir( disk, dir )->inode_num ) ) {
+        // increment links if inode number found
+        links += ( dir_inode_num == inode_num );
+
+        // continue traversal if directory is found
         inode = get_inode( disk, dir_inode_num );
         if( is_dir( inode->f_acl ) )
-            traverse_dir( disk, inode, inode_num );
-
-        if( dir_inode_num == inode_num )
-            return 1;
+            count_links( disk, inode, inode_num, links );
     }
-    return 0;
+    return links;
 }
 
 
@@ -457,7 +437,7 @@ int check_blocks( Disk * disk, int * allocd_blocks, int block_num ) {
             read_block( disk, block_num, bbuf );
 
             // calculate size of block
-//            TODO check properly detects end of file
+//            TODO check properly detects end of file, looks for 0
             while( size < BLOCK_SIZE && bbuf[ size / sizeof( char ) ] > 0 )
                 size += sizeof( char );
         }
