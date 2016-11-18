@@ -13,19 +13,19 @@
  *  @param Disk * disk   The disk containing the file system
  */
 void mkroot( Disk * disk ) {
-    Inode    * root_i;
-    DirEntry   root[ 2 ];
+    Inode *  root_i;
+    DirEntry root[ 2 ];
 
     // get the zero-th inode to store the root dir in
-    root_i = new_inode( disk ); // should be inode 0
+    root_i          = new_inode( disk ); // should be inode 0
     // !! root_i->f_inode_num == 0 !!
-    root_i->f_acl = 0x1ff; // 01 111 111 111
+    root_i->f_acl   = 0x1ff; // 01 111 111 111
     root_i->f_links = 2;
 
-    root[ 0 ].inode_num = root_i -> f_inode_num;
+    root[ 0 ].inode_num = root_i->f_inode_num;
     strcpy( root[ 0 ].filename, "." );
 
-    root[ 1 ].inode_num = root_i -> f_inode_num;
+    root[ 1 ].inode_num = root_i->f_inode_num;
     strcpy( root[ 1 ].filename, ".." );
 
     i_write( disk, root_i, ( char * ) root, 2 * sizeof( DirEntry ), 0 );
@@ -57,31 +57,31 @@ int namei( Disk * disk, const char * path ) {
  * @param int    offset   Offset into the file to start reading from
  */
 int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
-    int          block_size;            /* fs block size */
-    int          file_size;             /* file size, i.e. inode->f_size */
-    int          n_indirects;           /* how many ints can fit in a block */
-    int          n_indirects_sq;        /* n_indirects * n_indirects */
-    int          cur_block;             /* current block (relative to file) to read */
-    int          block_to_read;         /* current block (relative to fs) to read */
-    int          bytes_to_read;         /* bytes to read from cur_block */
-    char         data[ BLOCK_SIZE ];    /* buffer to read file contents into */
-    int          bytes_read = 0;        /* number of bytes already read into buf */
-    int          cur_si     = -1;
-    int          cur_di     = -1;       /* ids of blocks last read into siblock & diblock */
-    int          si         = -1;
-    int          di         = -1;       /* id of siblock and diblock that we need */
-    int        * siblock;
-    int        * diblock;
-    int        * tiblock;               /* buffers to store indirects */
+    int block_size;            /* fs block size */
+    int file_size;             /* file size, i.e. inode->f_size */
+    int n_indirects;           /* how many ints can fit in a block */
+    int n_indirects_sq;        /* n_indirects * n_indirects */
+    int cur_block;             /* current block (relative to file) to read */
+    int block_to_read;         /* current block (relative to fs) to read */
+    int bytes_to_read;         /* bytes to read from cur_block */
+    char data[BLOCK_SIZE];    /* buffer to read file contents into */
+    int bytes_read = 0;        /* number of bytes already read into buf */
+    int cur_si = -1;
+    int cur_di = -1;       /* ids of blocks last read into siblock & diblock */
+    int si = -1;
+    int di = -1;       /* id of siblock and diblock that we need */
+    int * siblock;
+    int * diblock;
+    int * tiblock;               /* buffers to store indirects */
     Superblock * superblock;            /* reference to a superblock */
 
-    file_size = inode -> f_size;
+    file_size = inode->f_size;
     // by default, the double indirect block we read from is the one given in
     // the inode. this will change if we are in the triple indirect block
-    di = inode -> f_block[ DOUBLE_INDRCT ];
+    di = inode->f_block[ DOUBLE_INDRCT ];
     // by default, the single indirect block we read from is the one given in
     // the inode. this will change if we are in the double indirect block
-    si = inode -> f_block[ SINGLE_INDRCT ];
+    si = inode->f_block[ SINGLE_INDRCT ];
 
     // if we don't have to read, don't read. ¯\_(ツ)_/¯
     if( size <= 0 || offset >= file_size ) {
@@ -90,11 +90,11 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
 
     // get the superblock so we can get the data we need about the file system
     read_block( disk, 0, data );
-    superblock      = ( Superblock * ) data;
-    block_size      = superblock -> fs_block_size;
+    superblock = ( Superblock * ) data;
+    block_size = superblock->fs_block_size;
     // the number of indirects a block can have
-    n_indirects     = block_size / sizeof( int );
-    n_indirects_sq  = n_indirects * n_indirects;
+    n_indirects = block_size / sizeof( int );
+    n_indirects_sq = n_indirects * n_indirects;
     // this is the file's n-th block that we will read
     cur_block = offset / block_size;
 
@@ -112,7 +112,7 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
             if( tiblock == NULL ) {
                 tiblock = new int[n_indirects];
                 read_block( disk,
-                            inode -> f_block[ TRIPLE_INDRCT ],
+                            inode->f_block[ TRIPLE_INDRCT ],
                             ( char * ) tiblock );
             }
 
@@ -137,7 +137,8 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                 read_block( disk, di, ( char * ) diblock );
             }
             // subtracting n+12 to obviate lower layers of indirection
-            int pos = ( block_to_read - ( n_indirects + SINGLE_INDRCT ) ) / n_indirects;
+            int pos = ( block_to_read - ( n_indirects + SINGLE_INDRCT ) ) /
+                      n_indirects;
             // get the single indirect block that contains the block we need to read
             si = diblock[ pos ];
             // since we're moving onto single indirect addressing, subtract all
@@ -147,7 +148,7 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
 
         // in a single indirect block
         if( block_to_read >= SINGLE_INDRCT ) {
-            siblock = siblock == NULL ? new int[ n_indirects ] : siblock;
+            siblock = siblock == NULL ? new int[n_indirects] : siblock;
             // if we dont' already have the single indirects loaded into memory, load it
             if( cur_si != si ) {
                 cur_si = si;
@@ -159,7 +160,7 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
 
         // in a direct block
         if( cur_block < SINGLE_INDRCT ) {
-            block_to_read = inode -> f_block[ block_to_read ];
+            block_to_read = inode->f_block[ block_to_read ];
         }
 
         read_block( disk, block_to_read, data );
@@ -197,34 +198,34 @@ int read( Disk * disk, const char * path, char * buf, int size, int offset ) {
  * @param int      offset   Offset into the file to start writing to
  */
 int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
-    char          data[ BLOCK_SIZE ];   /* buffer to read/write file contents into/from */
-    int           block_size;           /* copy of the fs block size */
-    int           file_size;            /* copy of the file size, i.e. inode->f_size */
-    int           n_indirects;          /* how many ints can fit in a block */
-    int           n_indirects_sq;       /* n_indirects * n_indirects */
-    int           cur_block;            /* the current block (relative to file) to write */
-    int           block_to_write;       /* the current block (relative to fs) to write */
-    int           bytes_to_write;       /* bytes to write into cur_block */
-    int         * siblock;
-    int         * diblock;
-    int         * tiblock;              /* buffers to store indirects */
-    Superblock  * superblock;           /* reference to a superblock */
-    int           bytes_written = 0;    /* number of bytes already written from buf */
-    int           cur_si        = -1;
-    int           cur_di        = -1;   /* ids of blocks last read into siblock & diblock */
-    int           si            = -1;
-    int           di            = -1;   /* id of siblock and diblock that we need */
-    int           si_index      = -1;   /* index into siblock for data */
-    int           di_index      = -1;   /* index into diblock for siblock */
-    int           ti_index      = -1;   /* index into tiblock for diblock */
+    char data[BLOCK_SIZE];   /* buffer to read/write file contents into/from */
+    int block_size;           /* copy of the fs block size */
+    int file_size;            /* copy of the file size, i.e. inode->f_size */
+    int n_indirects;          /* how many ints can fit in a block */
+    int n_indirects_sq;       /* n_indirects * n_indirects */
+    int cur_block;            /* the current block (relative to file) to write */
+    int block_to_write;       /* the current block (relative to fs) to write */
+    int bytes_to_write;       /* bytes to write into cur_block */
+    int * siblock;
+    int * diblock;
+    int * tiblock;              /* buffers to store indirects */
+    Superblock * superblock;           /* reference to a superblock */
+    int bytes_written = 0;    /* number of bytes already written from buf */
+    int cur_si = -1;
+    int cur_di = -1;   /* ids of blocks last read into siblock & diblock */
+    int si = -1;
+    int di = -1;   /* id of siblock and diblock that we need */
+    int si_index = -1;   /* index into siblock for data */
+    int di_index = -1;   /* index into diblock for siblock */
+    int ti_index = -1;   /* index into tiblock for diblock */
 
-    file_size = inode -> f_size;
+    file_size = inode->f_size;
     // by default, the double indirect block we write to is the one given in the
     // inode. this will change if we are in the triple indirect block
-    di = inode -> f_block[ DOUBLE_INDRCT ];
+    di = inode->f_block[ DOUBLE_INDRCT ];
     // by default, the single indirect block we write to is the one given in the
     // inode. this will change if we are in the double indirect block
-    si = inode -> f_block[ SINGLE_INDRCT ];
+    si = inode->f_block[ SINGLE_INDRCT ];
 
     // if we don't have to write, don't write. ¯\_(ツ)_/¯
     if( size <= 0 || offset >= file_size )
@@ -232,13 +233,13 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
 
     // get the superblock so we can get the data we need about the file system
     read_block( disk, 0, data );
-    superblock      = ( Superblock * ) data;
-    block_size      = superblock -> fs_block_size;
+    superblock = ( Superblock * ) data;
+    block_size = superblock->fs_block_size;
     // the number of indirects a block can have
-    n_indirects     = block_size / sizeof( int );
-    n_indirects_sq  = n_indirects * n_indirects;
+    n_indirects = block_size / sizeof( int );
+    n_indirects_sq = n_indirects * n_indirects;
     // this is the file's n-th block that we will write to
-    cur_block       = offset / block_size;
+    cur_block = offset / block_size;
 
     // while we have more bytes to write
     while( bytes_written <= size ) {
@@ -256,20 +257,24 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                 // are filled/allocated
                 i_ensure_size(
                         disk, inode,
-                        ( n_indirects_sq + n_indirects + SINGLE_INDRCT ) * block_size
+                        ( n_indirects_sq + n_indirects + SINGLE_INDRCT ) *
+                        block_size
                 );
                 // if there is no triple indirect block yet, we need to allocate one
-                if( inode -> f_block[ TRIPLE_INDRCT ] == -1 ) {
-                    inode -> f_block[ TRIPLE_INDRCT ] = allocate_data_block( disk );
+                if( inode->f_block[ TRIPLE_INDRCT ] == -1 ) {
+                    inode->f_block[ TRIPLE_INDRCT ] = allocate_data_block(
+                            disk );
                     save_inode( disk, inode );
                 }
                 // read the triple indirect block into tiblock
-                read_block( disk, inode -> f_block[ TRIPLE_INDRCT ], ( char * ) tiblock );
+                read_block( disk, inode->f_block[ TRIPLE_INDRCT ],
+                            ( char * ) tiblock );
             }
 
             // subtracting n^2+n+12 to obviate lower layers of indirection
             ti_index =
-                    ( block_to_write - ( n_indirects_sq + n_indirects + SINGLE_INDRCT ) ) /
+                    ( block_to_write -
+                      ( n_indirects_sq + n_indirects + SINGLE_INDRCT ) ) /
                     n_indirects_sq;
             // get the double indirect block that contains the block we need to write to
             di = tiblock[ ti_index ];
@@ -289,8 +294,8 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                         ( n_indirects + SINGLE_INDRCT ) * block_size
                 );
                 // allocate a data block and save the inode
-                inode -> f_block[ DOUBLE_INDRCT ] = allocate_data_block( disk );
-                di = inode -> f_block[ DOUBLE_INDRCT ];
+                inode->f_block[ DOUBLE_INDRCT ] = allocate_data_block( disk );
+                di = inode->f_block[ DOUBLE_INDRCT ];
                 save_inode( disk, inode );
             } else if( ti_index != -1 && di == -1 ) {
                 // if we're in a double indirect block from a triple indirect, but it
@@ -308,16 +313,18 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                 // allocate a double indirect block and save the tiblock
                 tiblock[ ti_index ] = allocate_data_block( disk );
                 di = tiblock[ ti_index ];
-                write_block( disk, inode -> f_block[ TRIPLE_INDRCT ], ( char * ) tiblock );
+                write_block( disk, inode->f_block[ TRIPLE_INDRCT ],
+                             ( char * ) tiblock );
             }
 
-            diblock = diblock == NULL ? new int[ n_indirects ] : diblock;
+            diblock = diblock == NULL ? new int[n_indirects] : diblock;
             if( cur_di != di ) {
                 cur_di = di;
                 read_block( disk, di, ( char * ) diblock );
             }
             // subtracting n+12 to obviate lower layers of indirection
-            di_index = ( block_to_write - ( n_indirects + SINGLE_INDRCT ) ) / n_indirects;
+            di_index = ( block_to_write - ( n_indirects + SINGLE_INDRCT ) ) /
+                       n_indirects;
             // get the single indirect block that contains the block we need to read
             si = diblock[ di_index ];
             // since we're moving onto single indirect addressing, subtract all
@@ -335,8 +342,8 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                         SINGLE_INDRCT * block_size
                 );
                 // allocate a data block and save the inode
-                inode -> f_block[ SINGLE_INDRCT ] = allocate_data_block( disk );
-                si = inode -> f_block[ SINGLE_INDRCT ];
+                inode->f_block[ SINGLE_INDRCT ] = allocate_data_block( disk );
+                si = inode->f_block[ SINGLE_INDRCT ];
                 save_inode( disk, inode );
             } else if( ti_index == -1 && di_index != -1 && si == -1 ) {
                 // if we're in a single indirect block from the inode's double indirect,
@@ -347,13 +354,15 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                         disk, inode,
                         // number of data blocks passed in double indirects plus
                         // all inode single indirects plus 12 (direct)
-                        ( di_index * n_indirects + n_indirects + SINGLE_INDRCT ) *
+                        ( di_index * n_indirects + n_indirects +
+                          SINGLE_INDRCT ) *
                         block_size
                 );
                 // allocate a single indirect block and save the diblock
                 diblock[ di_index ] = allocate_data_block( disk );
                 si = diblock[ di_index ];
-                write_block( disk, inode -> f_block[ DOUBLE_INDRCT ], ( char * ) diblock );
+                write_block( disk, inode->f_block[ DOUBLE_INDRCT ],
+                             ( char * ) diblock );
             } else if( ti_index != -1 && di_index != -1 && si == -1 ) {
                 // if we're in a single indirect block from a double indirect (itself from
                 // a triple indirect), but it hasn't been allocated yet
@@ -376,7 +385,7 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                 si = diblock[ di_index ];
                 write_block( disk, di, ( char * ) diblock );
             }
-            siblock = siblock == NULL ? new int[ n_indirects ] : siblock;
+            siblock = siblock == NULL ? new int[n_indirects] : siblock;
             // if we dont' already have the single indirects loaded into memory, load it
             if( cur_si != si ) {
                 cur_si = si;
@@ -404,9 +413,11 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                         // number of data blocks passed in current single indirect plus
                         std::max( si_index, 0 ) +
                         // all inode double indirects plus
-                        std::max( inode -> f_block[ DOUBLE_INDRCT ], 0 ) * n_indirects_sq +
+                        std::max( inode->f_block[ DOUBLE_INDRCT ], 0 ) *
+                        n_indirects_sq +
                         // all inode single indirects plus
-                        std::max( inode -> f_block[ SINGLE_INDRCT ], 0 ) * n_indirects +
+                        std::max( inode->f_block[ SINGLE_INDRCT ], 0 ) *
+                        n_indirects +
                         // direct blocks
                         std::min( cur_block, SINGLE_INDRCT )
                 ) * block_size
@@ -421,10 +432,10 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
 
         // in a direct block
         if( cur_block < SINGLE_INDRCT ) {
-            block_to_write = inode -> f_block[ cur_block ];
-            if( inode -> f_block[ cur_block ] == -1 ) {
-                inode -> f_block[ cur_block ] = allocate_data_block( disk );
-                block_to_write = inode -> f_block[ cur_block ];
+            block_to_write = inode->f_block[ cur_block ];
+            if( inode->f_block[ cur_block ] == -1 ) {
+                inode->f_block[ cur_block ] = allocate_data_block( disk );
+                block_to_write = inode->f_block[ cur_block ];
             }
         }
 
@@ -438,11 +449,11 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
         bytes_written += bytes_to_write;
 
         if( bytes_to_write < block_size ) {
-            inode -> f_size = std::max(
+            inode->f_size = std::max(
                     // if we didn't write to the end of the file
-                    inode -> f_size,
+                    inode->f_size,
                     // if we wrote past the end of the file
-                    inode -> f_size - ( inode -> f_size % block_size ) +
+                    inode->f_size - ( inode->f_size % block_size ) +
                     bytes_to_write
             );
             save_inode( disk, inode );
@@ -482,8 +493,8 @@ int i_ensure_size( Disk * disk, Inode * inode, int size ) {
 
 /* @param char*  path     FULL path (from root "/") to the file */
 int ensure_size( Disk * disk, const char * path, int size ) {
-    int     inode_num = namei( disk, path );
-    Inode * inode     = get_inode( disk, inode_num );
+    int inode_num = namei( disk, path );
+    Inode * inode = get_inode( disk, inode_num );
     return i_ensure_size( disk, inode, size );
 }
 
@@ -497,17 +508,17 @@ int ensure_size( Disk * disk, const char * path, int size ) {
  */
 int i_mknod( Disk * disk, Inode * inode, const char * filename ) {
     Inode * new_file_inode = new_inode( disk );
-    new_file_inode -> f_links = 1;
+    new_file_inode->f_links = 1;
 
     DirEntry * direntry = new DirEntry();
-    direntry -> inode_num = new_file_inode -> f_inode_num;
-    strcpy( direntry -> filename, filename );
+    direntry->inode_num = new_file_inode->f_inode_num;
+    strcpy( direntry->filename, filename );
 
     i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
-             inode -> f_size );
+             inode->f_size );
     save_inode( disk, new_file_inode );
     delete new_file_inode;
-    return direntry -> inode_num;
+    return direntry->inode_num;
 }
 
 
@@ -537,26 +548,26 @@ int mknod( Disk * disk, const char * path ) {
  */
 int i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
     Inode * new_dir_inode = new_inode( disk );
-    new_dir_inode -> f_links = 2;
+    new_dir_inode->f_links = 2;
 
     DirEntry entries[2];
-    entries[ 0 ] . inode_num = new_dir_inode -> f_inode_num;
-    strcpy( entries[ 0 ] . filename, "." );
-    entries[ 1 ] . inode_num = inode -> f_inode_num;
-    strcpy( entries[ 1 ] . filename, ".." );
+    entries[ 0 ].inode_num = new_dir_inode->f_inode_num;
+    strcpy( entries[ 0 ].filename, "." );
+    entries[ 1 ].inode_num = inode->f_inode_num;
+    strcpy( entries[ 1 ].filename, ".." );
 
     DirEntry * direntry = new DirEntry();
-    direntry -> inode_num = new_dir_inode -> f_inode_num;
-    strcpy( direntry -> filename, dirname );
+    direntry->inode_num = new_dir_inode->f_inode_num;
+    strcpy( direntry->filename, dirname );
     i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
-             inode -> f_size );
+             inode->f_size );
 
     i_write( disk, new_dir_inode, ( char * ) entries, 2 * sizeof( DirEntry ),
              0 );
     save_inode( disk, new_dir_inode );
     delete new_dir_inode;
 
-    return direntry -> inode_num;
+    return direntry->inode_num;
 }
 
 

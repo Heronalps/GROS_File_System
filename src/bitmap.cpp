@@ -15,8 +15,8 @@
  */
 Bitmap * init_bitmap( int size, char * buf ) {
     Bitmap * bm = new Bitmap;
-    bm -> size  = size;
-    bm -> buf   = buf;
+    bm->size    = size;
+    bm->buf     = buf;
     return bm;
 }
 
@@ -32,12 +32,12 @@ int first_unset_bit( Bitmap * bm ) {
     int offset;
     int isset = 1;
 
-    for( i = 0; i < bm -> size && isset == 1; i++ ) {
+    for( i = 0; i < bm->size && isset == 1; i++ ) {
         byte   = i / 8;
         offset = i % 8;
-        isset  = ( bm -> buf[ byte ] & ( 1 << offset ) ) > 0;
+        isset  = ( bm->buf[ byte ] & ( 1 << offset ) ) > 0;
     }
-    if( i >= bm -> size )
+    if( i >= bm->size )
         return -1;
     else
         return i - 1;
@@ -51,12 +51,13 @@ int first_unset_bit( Bitmap * bm ) {
  * @param int index    The index to check in the bitmap
  */
 short is_bit_set( Bitmap * bm, int index ) {
-    if( index < 0 || index >= bm -> size ) {
+    if( index < 0 || index >= bm->size )
         return 1;
-    }
+
     int byte   = index / 8;
     int offset = index % 8;
-    return ( bm -> buf[ byte ] & ( 1 << offset ) ) > 0;
+
+    return ( bm->buf[ byte ] & ( 1 << offset ) ) > 0;
 }
 
 /**
@@ -68,12 +69,12 @@ short is_bit_set( Bitmap * bm, int index ) {
  * @param int index    The index to check in the bitmap
  */
 int set_bit( Bitmap * bm, int index ) {
-    if( index < 0 || index >= bm -> size ) {
+    if( index < 0 || index >= bm->size )
         return -1;
-    }
-    int byte   = index / 8;
-    int offset = index % 8;
-    bm -> buf[ byte ] = bm -> buf[ byte ] | ( 1 << offset );
+
+    int byte        = index / 8;
+    int offset      = index % 8;
+    bm->buf[ byte ] = ( char ) ( bm->buf[ byte ] | ( 1 << offset ) );
     return index;
 }
 
@@ -86,40 +87,40 @@ int set_bit( Bitmap * bm, int index ) {
  * @param int index    The index to check in the bitmap
  */
 int unset_bit( Bitmap * bm, int index ) {
-    if( index < 0 || index >= bm -> size ) {
+    if( index < 0 || index >= bm->size )
         return -1;
-    }
-    int byte   = index / 8;
-    int offset = index % 8;
-    bm -> buf[ byte ] = bm -> buf[ byte ] & ~( 1 << offset );
+
+    int byte        = index / 8;
+    int offset      = index % 8;
+    bm->buf[ byte ] = ( char ) ( bm->buf[ byte ] & ~( 1 << offset ) );
     return index;
 }
 
 TEST_CASE( "Bitmap can be created", "[bitmap]" ) {
-    char buf[]  = { 0x0 };
+    char buf[] = { 0x0 };
     Bitmap * bm = init_bitmap( 8, buf );
 
-    REQUIRE( bm -> size == 8 );
-    REQUIRE( bm -> buf  == buf );
+    REQUIRE( bm->size == 8 );
+    REQUIRE( bm->buf == buf );
 }
 
 TEST_CASE( "Bitmap can detect set bits based on index", "[bitmap]" ) {
     SECTION( "Zero-indexed set bit" ) {
-        char buf[]  = { 0x0 };
+        char buf[] = { 0x0 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( is_bit_set( bm, 0 ) == 0 );
         REQUIRE( is_bit_set( bm, 1 ) == 0 );
     }
 
     SECTION( "Zero-indexed unset bit" ) {
-        char buf[]  = { 0x1 };
+        char buf[] = { 0x1 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( is_bit_set( bm, 0 ) == 1 );
         REQUIRE( is_bit_set( bm, 1 ) == 0 );
     }
 
     SECTION( "Unset bit in more than one char" ) {
-        char buf[]  = { 0x1, 0x1 };
+        char buf[] = { 0x1, 0x1 };
         Bitmap * bm = init_bitmap( 16, buf );
         REQUIRE( is_bit_set( bm, 0 ) == 1 );
         REQUIRE( is_bit_set( bm, 1 ) == 0 );
@@ -128,7 +129,7 @@ TEST_CASE( "Bitmap can detect set bits based on index", "[bitmap]" ) {
     }
 
     SECTION( "Bit is set if index is out of bounds" ) {
-        char buf[]  = { 0x1 };
+        char buf[] = { 0x1 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( is_bit_set( bm, -1 ) == 1 );
         REQUIRE( is_bit_set( bm, 8 ) == 1 );
@@ -137,25 +138,25 @@ TEST_CASE( "Bitmap can detect set bits based on index", "[bitmap]" ) {
 
 TEST_CASE( "Bitmap can detect first unset bit", "[bitmap]" ) {
     SECTION( "Zero-indexed unset bit" ) {
-        char buf[]  = { 0x0 };
+        char buf[] = { 0x0 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( first_unset_bit( bm ) == 0 );
     }
 
     SECTION( "Zero-indexed set bit" ) {
-        char buf[]  = { 0x1 };
+        char buf[] = { 0x1 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( first_unset_bit( bm ) == 1 );
     }
 
     SECTION( "No available bits" ) {
-        char buf[]  = { 0xff };
+        char buf[] = { 0xff };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( first_unset_bit( bm ) == -1 );
     }
 
     SECTION( "Available bit in second number" ) {
-        char buf[]  = { 0xff, 0x0 };
+        char buf[] = { 0xff, 0x0 };
         Bitmap * bm = init_bitmap( 16, buf );
         REQUIRE( first_unset_bit( bm ) == 8 );
     }
@@ -163,66 +164,66 @@ TEST_CASE( "Bitmap can detect first unset bit", "[bitmap]" ) {
 
 TEST_CASE( "Bitmap can set its bits", "[bitmap]" ) {
     SECTION( "Set first bit" ) {
-        char buf[]  = { 0x0 };
+        char buf[] = { 0x0 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( is_bit_set( bm, 0 ) == 0 );
-        REQUIRE( set_bit   ( bm, 0 ) == 0 );
+        REQUIRE( set_bit( bm, 0 ) == 0 );
         REQUIRE( is_bit_set( bm, 0 ) == 1 );
     }
 
     SECTION( "Set already set bit should not fail" ) {
-        char buf[]  = { 0x1 };
+        char buf[] = { 0x1 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( is_bit_set( bm, 0 ) == 1 );
-        REQUIRE( set_bit   ( bm, 0 ) == 0 );
+        REQUIRE( set_bit( bm, 0 ) == 0 );
         REQUIRE( is_bit_set( bm, 0 ) == 1 );
     }
 
     SECTION( "Out of bounds setting should fail" ) {
-        char buf[]  = { 0x0 };
+        char buf[] = { 0x0 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( set_bit( bm, -1 ) == -1 );
         REQUIRE( set_bit( bm, 8 ) == -1 );
     }
 
     SECTION( "Set bit in second number" ) {
-        char buf[]  = { 0x0, 0x0 };
+        char buf[] = { 0x0, 0x0 };
         Bitmap * bm = init_bitmap( 16, buf );
         REQUIRE( is_bit_set( bm, 8 ) == 0 );
-        REQUIRE( set_bit   ( bm, 8 ) == 8 );
+        REQUIRE( set_bit( bm, 8 ) == 8 );
         REQUIRE( is_bit_set( bm, 8 ) == 1 );
     }
 }
 
 TEST_CASE( "Bitmap can unset its bits", "[bitmap]" ) {
     SECTION( "Unset first bit" ) {
-        char buf[]  = { 0x1 };
+        char buf[] = { 0x1 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( is_bit_set( bm, 0 ) == 1 );
-        REQUIRE( unset_bit ( bm, 0 ) == 0 );
+        REQUIRE( unset_bit( bm, 0 ) == 0 );
         REQUIRE( is_bit_set( bm, 0 ) == 0 );
     }
 
     SECTION( "Unsetting a zero bit should not fail" ) {
-        char buf[]  = { 0x0 };
+        char buf[] = { 0x0 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( is_bit_set( bm, 0 ) == 0 );
-        REQUIRE( unset_bit ( bm, 0 ) == 0 );
+        REQUIRE( unset_bit( bm, 0 ) == 0 );
         REQUIRE( is_bit_set( bm, 0 ) == 0 );
     }
 
     SECTION( "Out of bounds unsetting should fail" ) {
-        char buf[]  = { 0x0 };
+        char buf[] = { 0x0 };
         Bitmap * bm = init_bitmap( 8, buf );
         REQUIRE( unset_bit( bm, -1 ) == -1 );
-        REQUIRE( unset_bit( bm, 8 )  == -1 );
+        REQUIRE( unset_bit( bm, 8 ) == -1 );
     }
 
     SECTION( "Unset bit in second number" ) {
-        char buf[]  = { 0x0, 0x1 };
+        char buf[] = { 0x0, 0x1 };
         Bitmap * bm = init_bitmap( 16, buf );
         REQUIRE( is_bit_set( bm, 8 ) == 1 );
-        REQUIRE( unset_bit ( bm, 8 ) == 8 );
+        REQUIRE( unset_bit( bm, 8 ) == 8 );
         REQUIRE( is_bit_set( bm, 8 ) == 0 );
     }
 }

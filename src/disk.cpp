@@ -11,9 +11,9 @@
  *  Disk *mem will be a char array of EMULATOR_SIZE items
  */
 Disk * open_disk() {
-    Disk * disk  = new Disk();
-    disk -> size = EMULATOR_SIZE;
-    disk -> mem  = new char[ EMULATOR_SIZE ];
+    Disk * disk = new Disk();
+    disk->size  = EMULATOR_SIZE;
+    disk->mem   = new char[EMULATOR_SIZE];
     return disk;
 }
 
@@ -24,7 +24,7 @@ Disk * open_disk() {
  * @param Disk *disk    The pointer to the disk to close
  */
 void close_disk( Disk * disk ) {
-    delete [] disk -> mem;
+    delete [] disk->mem;
     delete    disk;
 }
 
@@ -41,10 +41,10 @@ int read_block( Disk * disk, int block_num, char * buf ) {
         return -1;
 
     int byte_offset = block_num * BLOCK_SIZE;
-    if( ( byte_offset + BLOCK_SIZE ) > disk -> size )
+    if( ( byte_offset + BLOCK_SIZE ) > disk->size )
         return -1;
 
-    std::memcpy( buf, ( disk -> mem + byte_offset ), BLOCK_SIZE );
+    std::memcpy( buf, ( disk->mem + byte_offset ), BLOCK_SIZE );
     return 0;
 }
 
@@ -57,14 +57,14 @@ int read_block( Disk * disk, int block_num, char * buf ) {
  *                        * Must be allocated to be size BLOCK_SIZE
  */
 int write_block( Disk * disk, int block_num, char * buf ) {
-    if( block_num < 0 ) {
+    if( block_num < 0 )
         return -1;
-    }
+
     int byte_offset = block_num * BLOCK_SIZE;
-    if( ( byte_offset + BLOCK_SIZE ) > disk -> size ) {
+    if( ( byte_offset + BLOCK_SIZE ) > disk->size )
         return -1;
-    }
-    std::memcpy( ( disk -> mem + byte_offset ), buf, BLOCK_SIZE );
+
+    std::memcpy( ( disk->mem + byte_offset ), buf, BLOCK_SIZE );
     return 0;
 }
 
@@ -73,9 +73,9 @@ TEST_CASE( "Disk emulator can be accessed properly", "[disk]" ) {
     Disk * disk = open_disk();
     char buf[BLOCK_SIZE];
 
-    REQUIRE( disk -> size == EMULATOR_SIZE );
-    REQUIRE( disk -> mem != NULL );
-    REQUIRE( disk -> fp == NULL );
+    REQUIRE( disk->size == EMULATOR_SIZE );
+    REQUIRE( disk->mem != NULL );
+    REQUIRE( disk->fp == NULL );
 
     SECTION( "read_block will read out BLOCK_SIZE bytes" ) {
         int ret = read_block( disk, 0, buf );
@@ -88,7 +88,7 @@ TEST_CASE( "Disk emulator can be accessed properly", "[disk]" ) {
     }
 
     SECTION( "read_block will fail on a block number that is out of range" ) {
-        int block_num = ( disk -> size / BLOCK_SIZE ) + 1;
+        int block_num = ( disk->size / BLOCK_SIZE ) + 1;
         int ret = read_block( disk, block_num, buf );
         REQUIRE( ret != 0 );
     }
@@ -104,7 +104,7 @@ TEST_CASE( "Disk emulator can be accessed properly", "[disk]" ) {
     }
 
     SECTION( "write_block will fail on a block number that is out of range" ) {
-        int block_num = ( disk -> size / BLOCK_SIZE ) + 1;
+        int block_num = ( disk->size / BLOCK_SIZE ) + 1;
         int ret = write_block( disk, block_num, buf );
         REQUIRE( ret != 0 );
     }
