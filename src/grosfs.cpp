@@ -43,7 +43,7 @@ void make_fs( Disk * disk ) {
 
     for( i = 0; i < superblock->fs_num_block_groups; i++ ) {
         block_num = superblock->first_data_block + i * BLOCK_SIZE;
-        buf       = ( char * ) malloc( BLOCK_SIZE * sizeof( char ) );
+        buf       = ( char * ) calloc( BLOCK_SIZE, sizeof( char ) );
 
         Bitmap * bitmap = init_bitmap( superblock->fs_block_size, buf );
         set_bit( bitmap, 0 ); // set first block to used bc it's the bitmap
@@ -136,10 +136,10 @@ void fsck( Disk * disk ) {
     Superblock * superblock;
 
     read_block( disk, 0, buf );
-    n_indirects  = BLOCK_SIZE / sizeof( int );
-    superblock   = ( Superblock * ) buf;
-    allocd_blocks = ( int * ) calloc( superblock->fs_num_blocks,
-                                      sizeof( int ) );
+    n_indirects      = BLOCK_SIZE / sizeof( int );
+    superblock       = ( Superblock * ) buf;
+    allocd_blocks    = ( int * ) calloc( superblock->fs_num_blocks,
+                                         sizeof( int ) );
 
     num_free_blocks  = 0;
     num_free_inodes  = 0;

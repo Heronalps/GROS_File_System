@@ -75,23 +75,6 @@ int write( Disk * disk, const char * path, char * buf, int size, int offset );
 
 
 /**
- * Ensures that a file is at least `size` bytes long. If it is already
- *  `size` bytes, nothing happens and this returns 0. Otherwise, the
- *  file is allocated data blocks as necessary and zero-filled to be
- *  `size` bytes long, returning the number of bytes extended.
- *
- * @param Disk  *  disk     Disk containing the file system
- * @param Inode *  inode    Inode corresponding to the file to resize
- * @param int      size     Desired file size
- */
-int i_ensure_size( Disk * disk, Inode * inode, int size );
-
-
-/* @param char*  path     FULL path (from root "/") to the file */
-int ensure_size( Disk * disk, const char * path, int size );
-
-
-/**
 * Creates a file
 *
 * @param Disk  *  disk     Disk containing the file system
@@ -181,16 +164,29 @@ int truncate( Disk * disk, const char * path, int size );
 DirEntry * readdir( Disk * disk, Inode * dir );
 
 
+/**
+* Ensures that a file is at least `size` bytes long. If it is already
+*  `size` bytes, nothing happens and this returns 0. Otherwise, the
+*  file is allocated data blocks as necessary and zero-filled to be
+*  `size` bytes long, returning the number of bytes extended.
+*
+* @param Disk  *  disk     Disk containing the file system
+* @param Inode *  inode    Inode corresponding to the file to resize
+* @param int      size     Desired file size
+*/
+int i_ensure_size( Disk * disk, Inode * inode, int size );
+
+
+/* @param char*  path     FULL path (from root "/") to the file */
+int ensure_size( Disk * disk, const char * path, int size );
+
+
 
 /*
-    namei: get inode number for filepath
-    mkdir: makes a directory
-    mknod: makes a file
-    open/close: opens/closes a file
-    read/write: reads/writes a file
-    truncate: truncate or extend a file to a specified length
-    chown: change file owner and group
-    chmod: change file modes or Access Control Lists
+open/close: opens/closes a file
+truncate: truncate or extend a file to a specified length
+chown: change file owner and group
+chmod: change file modes or Access Control Lists
 */
 
 #endif
