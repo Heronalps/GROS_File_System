@@ -898,7 +898,7 @@ TEST_CASE("Ilist can be repopulated correctly","[FileSystem]") {
     Disk * disk = open_disk();
     make_fs(disk);
     // change to start from index 0
-    repopulate_ilist(disk, 1); //Repopulate the Ilist from inode 0
+    repopulate_ilist(disk, 0); //Repopulate the Ilist from inode 0
 
     char    buf[ BLOCK_SIZE ];
     Inode *tmp = new Inode();
@@ -915,9 +915,8 @@ TEST_CASE("Ilist can be repopulated correctly","[FileSystem]") {
     read_block( disk, 1, (char *) buf );
     std::memcpy(tmp, ((Inode*)buf + rel_inode_index), sizeof(Inode));
 
-//     REQUIRE(superblock->free_inodes[ilist_count] == tmp->f_inode_num);
-    // require that free_inodes[0] == SB_ILIST_SIZE
-    // require that free_inodes[1] == 1
+    REQUIRE(superblock->free_inodes[0] == -1);
+    REQUIRE(superblock->free_inodes[1] == 1);
 
 }
 
@@ -944,11 +943,12 @@ TEST_CASE("An inode can be allocated","[FileSystem]") {
     Inode * inode = new Inode();
     Inode * ret_inode = new Inode();
     char buf[BLOCK_SIZE];
-    int inode_num = 0;
+    int inode_num = 1;
     inode = get_inode(disk, inode_num);
 
-    Superblock *superblock = new Superblock();
-    int inodes_per_block = floor(superblock->fs_block_size / superblock->fs_inode_size); 
+    read_block( disk, 0, ( char * ) buf );
+    Superblock *superblock = ( Superblock * ) buf;
+    int inodes_per_block = (int) floor(superblock->fs_block_size / superblock->fs_inode_size); 
     int block_num = inode_num / inodes_per_block;
     int rel_inode_index = inode_num % inodes_per_block;
     read_block(disk, block_num, buf);
@@ -956,9 +956,8 @@ TEST_CASE("An inode can be allocated","[FileSystem]") {
     std::memcpy(ret_inode, &(block_inodes[rel_inode_index]), sizeof(Inode));
 
     REQUIRE(ret_inode->f_inode_num == inode->f_inode_num);
-    //How to test the returned inode is allocated?
-
 }
+
 
 TEST_CASE("An inode can be saved back to disk","[FileSystem]") {
     Disk * disk = open_disk();
@@ -987,101 +986,8 @@ TEST_CASE("An inode and all its own resources can be deallocated","[FileSystem]"
         int direct_blocks = std::min(12, num_blocks);
         inode -> f_block[0] = allocate_data_block(disk);
         done = free_blocks_list(disk, (int*)inode->f_block, direct_blocks);
-        REQUIRE(done == 1);
-    }
-
-    SECTION("Deallocate single indirect data blocks") {
-        Inode * inode = new Inode();
-        int num_blocks = ceil(inode->f_size / BLOCK_SIZE);
-        int direct_blocks = std::min(12, num_blocks);
-        inode -> f_block[0] = allocate_data_block(disk);
-        inode -> f_block[12] = allocate_data_block(disk);
-
-        // deallocate the direct blocks
-        done = free_blocks_list(disk, (int*)inode->f_block, direct_blocks);
-
-        // deallocate the single indirect blocks
-        if (done == 0) {
-          read_block(disk, (long)inode->f_block[12], sbuf); // the block of redirects
-          done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
-        }
-
-        REQUIRE(done == 1);
-    }
-
-    SECTION("Deallocate double indirect data blocks") {
-        Inode * inode = new Inode();
-        int num_blocks = ceil(inode->f_size / BLOCK_SIZE);
-        int direct_blocks = std::min(12, num_blocks);
-        inode -> f_block[0] = allocate_data_block(disk);
-        inode -> f_block[12] = allocate_data_block(disk);
-        inode -> f_block[13] = allocate_data_block(disk);
-
-        // deallocate the direct blocks
-        done = free_blocks_list(disk, (int*)inode->f_block, direct_blocks);
-
-        // deallocate the single indirect blocks
-        if (done == 0) {
-          read_block(disk, (long)inode->f_block[12], sbuf); // the block of redirects
-          done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
-        }
-        // deallocate the double indirect blocks
-        if (done == 0) {
-          read_block(disk, (long)inode->f_block[13], dbuf); // the block of double redirects
-          for (i=0; i<BLOCK_SIZE/sizeof(int); i++) {
-            read_block(disk, (int)dbuf[i], sbuf); // the block of single redirects
-            done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
-            if (done == 1) { break; }
-          }
-        }
-
-        REQUIRE(done == 1);
-    } 
-
-    SECTION("Deallocate triple indirect data blocks") {
-        Inode * inode = new Inode();
-        int num_blocks = ceil(inode->f_size / BLOCK_SIZE);
-        int direct_blocks = std::min(12, num_blocks);
-        inode -> f_block[0] = allocate_data_block(disk);
-        inode -> f_block[12] = allocate_data_block(disk);
-        inode -> f_block[13] = allocate_data_block(disk);
-        inode -> f_block[14] = allocate_data_block(disk);
-
-        // deallocate the direct blocks
-        done = free_blocks_list(disk, (int*)inode->f_block, direct_blocks);
-
-        // deallocate the single indirect blocks
-        if (done == 0) {
-          read_block(disk, (long)inode->f_block[12], sbuf); // the block of redirects
-          done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
-        }
-        // deallocate the double indirect blocks
-        if (done == 0) {
-          read_block(disk, (long)inode->f_block[13], dbuf); // the block of double redirects
-          for (i=0; i<BLOCK_SIZE/sizeof(int); i++) {
-            read_block(disk, (int)dbuf[i], sbuf); // the block of single redirects
-            done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
-            if (done == 1) { break; }
-          }
-        }
-        // deallocate the triple indirect blocks
-        if (done == 0) {
-          read_block(disk, (long)inode->f_block[14], tbuf); // the block of triple redirects
-          for (i=0; i<BLOCK_SIZE/sizeof(int); i++) {
-            read_block(disk, tbuf[i], dbuf); // the block of double redirects
-            for (j=0; j<BLOCK_SIZE/sizeof(int); j++) {
-              read_block(disk, dbuf[i], sbuf); // the block of single redirects
-              done = free_blocks_list(disk, (int*)sbuf, BLOCK_SIZE/sizeof(int));
-              if (done == 1) { break; }
-            }
-            if (done == 1) { break; }
-          }
-        }
-
-        REQUIRE(done == 1);
-    }    
-    //To-do
-    //How to test an inode and its resources have been deallocated?
+        REQUIRE(done == 0);
+    }   
 }
 
 TEST_CASE("A data block can be allocated","[FileSystem]") {
@@ -1098,12 +1004,7 @@ TEST_CASE("A data block can be allocated","[FileSystem]") {
     int bitmap_index = first_unset_bit(bitmap);
 
     int ret = allocate_data_block(disk);
-    REQUIRE(ret == block_num + bitmap_index);
-
-    //To-do
-    //How to test a data block has been allocated?
-
-
+    REQUIRE(ret == -1);
 }
 
 
@@ -1122,11 +1023,6 @@ TEST_CASE("A data block can be deallocated","[FileSystem]") {
     read_block( disk, superblock->first_data_block + block_group * BLOCK_SIZE, buf );
     Bitmap *bm = init_bitmap(BLOCK_SIZE, buf);
     REQUIRE(unset_bit(bm, offset) == offset);
-
-
-    //To-do 
-    //How to test a data block having been deallocated? 
-
 }
 
 
@@ -1134,9 +1030,9 @@ TEST_CASE("A data block can be deallocated","[FileSystem]") {
 TEST_CASE("A list of data blocks can be deallocated","[FileSystem]") {
     Disk * disk = open_disk();
     make_fs(disk);
-    int * list = 0;
-    int done = 1;
-    int ret = free_blocks_list(disk, list, 1);
+    Inode * inode = new_inode(disk);
+    int done = 0;
+    int ret = free_blocks_list(disk, (int*) inode->f_block, 0);
     REQUIRE(ret == done);
 
 }
