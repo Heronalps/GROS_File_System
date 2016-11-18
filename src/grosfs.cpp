@@ -248,14 +248,16 @@ void fsck( Disk * disk ) {
                         && check_parent( disk,
                                          readdir( disk, inode )->inode_num,
                                          inode->f_inode_num )
-                        && count_links( disk, inode->f_inode_num ) > 0 ) {
+                        && count_links( disk, inode, inode->f_inode_num, 0 )
+                           > 0 ) {
 
                         // check for valid inodes in entries
                         while( ( direntry = readdir( disk, inode ) ) ) {
                             if( direntry->inode_num < 1
-                                && direntry->inode_num >= superblock->fs_num_inodes
-                                && get_inode( disk,
-                                              direntry->inode_num )->f_links < 1 )
+                                && direntry->inode_num
+                                   >= superblock->fs_num_inodes
+                                && get_inode(
+                                    disk, direntry->inode_num )->f_links < 1 )
                                 unlink( disk, pwd( disk, inode,
                                                    direntry->filename ) );
                         }
