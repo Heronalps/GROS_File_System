@@ -13,7 +13,7 @@
 Disk * open_disk() {
     Disk * disk = new Disk();
     disk->size  = EMULATOR_SIZE;
-    disk->mem   = new char[EMULATOR_SIZE];
+    disk->mem   = new char[ EMULATOR_SIZE ];
     return disk;
 }
 

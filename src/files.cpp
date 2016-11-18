@@ -34,14 +34,28 @@ void mkroot( Disk * disk ) {
 }
 
 
+// TODO note: linux implementation returns 0 upon success, not exactly sure how it works
 /**
  * Returns the inode number of the file corresponding to the given path
  *
- * @param Disk* disk  Disk containing the file system
- * @param char* path  Path to the file, starting from root "/"
+ * @param Disk * disk  Disk containing the file system
+ * @param char * path  Path to the file, starting from root "/"
  */
-int namei( Disk * disk, const char * path ) {
-    return -1;
+int namei( Disk * disk, char * path ) {
+    Inode    * dir;
+    DirEntry * direntry;
+
+    dir  = get_inode( disk, 0 );
+    path = strtok( path, "/" );
+
+    // travese directory for name in path
+    while( ( direntry = readdir( disk, dir ) ) && path ) {
+        if( ! strcmp( direntry -> filename, path ) ) {
+            dir  = get_inode( disk, direntry -> inode_num );
+            path = strtok( NULL, "/" );
+        }
+    }
+    return dir -> f_inode_num;
 }
 
 
@@ -57,23 +71,23 @@ int namei( Disk * disk, const char * path ) {
  * @param int    offset   Offset into the file to start reading from
  */
 int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
-    int block_size;            /* fs block size */
-    int file_size;             /* file size, i.e. inode->f_size */
-    int n_indirects;           /* how many ints can fit in a block */
-    int n_indirects_sq;        /* n_indirects * n_indirects */
-    int cur_block;             /* current block (relative to file) to read */
-    int block_to_read;         /* current block (relative to fs) to read */
-    int bytes_to_read;         /* bytes to read from cur_block */
-    char data[BLOCK_SIZE];    /* buffer to read file contents into */
-    int bytes_read = 0;        /* number of bytes already read into buf */
-    int cur_si = -1;
-    int cur_di = -1;       /* ids of blocks last read into siblock & diblock */
-    int si = -1;
-    int di = -1;       /* id of siblock and diblock that we need */
-    int * siblock;
-    int * diblock;
-    int * tiblock;               /* buffers to store indirects */
-    Superblock * superblock;            /* reference to a superblock */
+    char         data[ BLOCK_SIZE ]; /* buffer to read file contents into */
+    int          block_size;         /* fs block size */
+    int          file_size;          /* file size, i.e. inode->f_size */
+    int          n_indirects;        /* how many ints can fit in a block */
+    int          n_indirects_sq;     /* n_indirects * n_indirects */
+    int          cur_block;          /* current block (relative to file) to read */
+    int          block_to_read;      /* current block (relative to fs) to read */
+    int          bytes_to_read;      /* bytes to read from cur_block */
+    int          bytes_read = 0;     /* number of bytes already read into buf */
+    int          cur_si     = -1;    /* id of blocks last read into siblock */
+    int          cur_di     = -1;    /* id of blocks last read into diblock */
+    int          si         = -1;    /* id of siblock that we need */
+    int          di         = -1;    /* id of diblock that we need */
+    int        * siblock;            /* buffer to store indirects */
+    int        * diblock;            /* buffer to store indirects */
+    int        * tiblock;            /* buffer to store indirects */
+    Superblock * superblock;         /* reference to a superblock */
 
     file_size = inode->f_size;
     // by default, the double indirect block we read from is the one given in
@@ -84,19 +98,18 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
     si = inode->f_block[ SINGLE_INDRCT ];
 
     // if we don't have to read, don't read. ¯\_(ツ)_/¯
-    if( size <= 0 || offset >= file_size ) {
+    if( size <= 0 || offset >= file_size )
         return 0;
-    }
 
     // get the superblock so we can get the data we need about the file system
     read_block( disk, 0, data );
-    superblock = ( Superblock * ) data;
-    block_size = superblock->fs_block_size;
+    superblock      = ( Superblock * ) data;
+    block_size      = superblock->fs_block_size;
     // the number of indirects a block can have
-    n_indirects = block_size / sizeof( int );
-    n_indirects_sq = n_indirects * n_indirects;
+    n_indirects     = block_size / sizeof( int );
+    n_indirects_sq  = n_indirects * n_indirects;
     // this is the file's n-th block that we will read
-    cur_block = offset / block_size;
+    cur_block       = offset / block_size;
 
     // while we have more bytes in the file to read and have not read the
     // requested amount of bytes
@@ -131,7 +144,7 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
 
         // in a double indirect block
         if( block_to_read >= ( n_indirects + SINGLE_INDRCT ) ) {
-            diblock = diblock == NULL ? new int[n_indirects] : diblock;
+            diblock = diblock == NULL ? ( new int[ n_indirects ] ) : diblock;
             if( cur_di != di ) {
                 cur_di = di;
                 read_block( disk, di, ( char * ) diblock );
@@ -148,7 +161,7 @@ int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
 
         // in a single indirect block
         if( block_to_read >= SINGLE_INDRCT ) {
-            siblock = siblock == NULL ? new int[n_indirects] : siblock;
+            siblock = siblock == NULL ? ( new int[ n_indirects ] ) : siblock;
             // if we dont' already have the single indirects loaded into memory, load it
             if( cur_si != si ) {
                 cur_si = si;
@@ -317,7 +330,7 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                              ( char * ) tiblock );
             }
 
-            diblock = diblock == NULL ? new int[n_indirects] : diblock;
+            diblock = diblock == NULL ? ( new int[ n_indirects ] ) : diblock;
             if( cur_di != di ) {
                 cur_di = di;
                 read_block( disk, di, ( char * ) diblock );
@@ -385,7 +398,7 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                 si = diblock[ di_index ];
                 write_block( disk, di, ( char * ) diblock );
             }
-            siblock = siblock == NULL ? new int[n_indirects] : siblock;
+            siblock = siblock == NULL ? ( new int[ n_indirects ] ) : siblock;
             // if we dont' already have the single indirects loaded into memory, load it
             if( cur_si != si ) {
                 cur_si = si;
@@ -463,9 +476,9 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
     }
 
     // free up the resources we allocated
-    if( siblock != NULL ) delete[] siblock;
-    if( diblock != NULL ) delete[] diblock;
-    if( tiblock != NULL ) delete[] tiblock;
+    if( siblock != NULL ) delete [] siblock;
+    if( diblock != NULL ) delete [] diblock;
+    if( tiblock != NULL ) delete [] tiblock;
 
     return bytes_written;
 }
@@ -493,8 +506,7 @@ int i_ensure_size( Disk * disk, Inode * inode, int size ) {
 
 /* @param char*  path     FULL path (from root "/") to the file */
 int ensure_size( Disk * disk, const char * path, int size ) {
-    int inode_num = namei( disk, path );
-    Inode * inode = get_inode( disk, inode_num );
+    Inode * inode = get_inode( disk, namei( disk, path ) );
     return i_ensure_size( disk, inode, size );
 }
 
@@ -507,16 +519,17 @@ int ensure_size( Disk * disk, const char * path, int size ) {
  * @param char  *  filename  Name of new file
  */
 int i_mknod( Disk * disk, Inode * inode, const char * filename ) {
-    Inode * new_file_inode = new_inode( disk );
-    new_file_inode->f_links = 1;
+    DirEntry * direntry       = new DirEntry();
+    Inode    * new_file_inode = new_inode( disk );
 
-    DirEntry * direntry = new DirEntry();
-    direntry->inode_num = new_file_inode->f_inode_num;
+    new_file_inode->f_links   = 1;
+    direntry->inode_num       = new_file_inode->f_inode_num;
     strcpy( direntry->filename, filename );
 
     i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
              inode->f_size );
     save_inode( disk, new_file_inode );
+
     delete new_file_inode;
     return direntry->inode_num;
 }
@@ -524,17 +537,18 @@ int i_mknod( Disk * disk, Inode * inode, const char * filename ) {
 
 /* @param char*  path     FULL path (from root "/") to place the new file */
 int mknod( Disk * disk, const char * path ) {
-    const char * file = strrchr( path, '/' ); // get filename this way
-    if( file ) { // not sure what to do otherwise
-        file = file + 1; // skip over delimiter
-    }
-    char * new_path = new char[strlen( path ) + 1];
+    char        * new_path = new char[ strlen( path ) + 1 ];
+    const char  * file     = strrchr( path, '/' ); // get filename this way
+
+    if( file )  // not sure what to do otherwise
+        file++; // skip over delimiter
+
     strcpy( new_path, path );
-    int index = ( int ) ( file - path );
+    int index             = ( int ) ( file - path );
     new_path[ index - 1 ] = '\0'; // cuts off filename
-    int inode_num = namei( disk, new_path );
-    Inode * inode = get_inode( disk, inode_num );
-    delete[] new_path;
+    Inode * inode = get_inode( disk, namei( disk, new_path ) );
+
+    delete [] new_path;
     return i_mknod( disk, inode, file );
 }
 
@@ -542,21 +556,22 @@ int mknod( Disk * disk, const char * path ) {
 /**
  * Creates a directory with two entries (. and ..)
  *
- * @param Disk*  disk     Disk containing the file system
- * @param Inode* inode    Inode of directory in which to place new directory
- * @param char*  dirname  Name of new directory
+ * @param Disk  * disk     Disk containing the file system
+ * @param Inode * inode    Inode of directory in which to place new directory
+ * @param char  * dirname  Name of new directory
  */
 int i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
-    Inode * new_dir_inode = new_inode( disk );
-    new_dir_inode->f_links = 2;
+    DirEntry   entries[ 2 ];
+    DirEntry * direntry      = new DirEntry();
+    Inode    * new_dir_inode = new_inode( disk );
 
-    DirEntry entries[2];
+    new_dir_inode->f_links   = 2;
+
     entries[ 0 ].inode_num = new_dir_inode->f_inode_num;
     strcpy( entries[ 0 ].filename, "." );
     entries[ 1 ].inode_num = inode->f_inode_num;
     strcpy( entries[ 1 ].filename, ".." );
 
-    DirEntry * direntry = new DirEntry();
     direntry->inode_num = new_dir_inode->f_inode_num;
     strcpy( direntry->filename, dirname );
     i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
@@ -565,25 +580,26 @@ int i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
     i_write( disk, new_dir_inode, ( char * ) entries, 2 * sizeof( DirEntry ),
              0 );
     save_inode( disk, new_dir_inode );
-    delete new_dir_inode;
 
+    delete new_dir_inode;
     return direntry->inode_num;
 }
 
 
 /* @param char*  path     FULL path (from root "/") to place the new directory */
 int mkdir( Disk * disk, const char * path ) {
-    const char * dir = strrchr( path, '/' ); //get filename this way
-    if( dir ) { //not sure what to do otherwise
-        dir = dir + 1; //skip over delimiter
-    }
-    char * new_path = new char[strlen( path ) + 1];
+    char       * new_path = new char[ strlen( path ) + 1 ];
+    const char * dir      = strrchr( path, '/' ); // get filename this way
+
+    if( dir )   // not sure what to do otherwise
+        dir++;  // skip over delimiter
+
     strcpy( new_path, path );
-    int index = ( int ) ( dir - path );
+    int index             = ( int ) ( dir - path );
     new_path[ index - 1 ] = '\0'; // cuts off filename
-    int inode_num = namei( disk, new_path );
-    Inode * inode = get_inode( disk, inode_num );
-    delete[] new_path;
+    Inode * inode         = get_inode( disk, namei( disk, new_path ) );
+
+    delete [] new_path;
     return i_mkdir( disk, inode, dir );
 }
 
