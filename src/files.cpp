@@ -633,7 +633,7 @@ int i_rmdir( Disk * disk, Inode * inode, const char * dirname ) {
 // TODO check for correct filename passed into fn
 //   TODO ** what if not path with a '/' ? **
 int rmdir( Disk * disk, const char * path ) {
-    char * dirname = strrchr( path, '/' ) + 1;
+    const char * dirname = strrchr( path, '/' ) + 1;
     return i_rmdir( disk, get_inode( disk, namei( disk, path ) ), dirname );
 }
 
@@ -653,7 +653,7 @@ int i_unlink( Disk * disk, Inode * inode, const char * filename ) {
 
 // TODO check for correct filename
 int unlink( Disk * disk, const char * path ) {
-    char * filename = strrchr( path, '/' ) + 1;
+    const char * filename = strrchr( path, '/' ) + 1;
     return i_unlink( disk, get_inode( disk, namei( disk, path ) ), filename );
 }
 
@@ -675,7 +675,7 @@ int i_rename( Disk * disk, Inode * inode,
 
 // TODO check for correct filename
 int rename( Disk * disk, const char * path, const char * newname ) {
-    char * oldname = strrchr( path, '/' ) + 1;
+    const char * oldname = strrchr( path, '/' ) + 1;
     return i_rename( disk, get_inode( disk, namei( disk, path ) ),
                      oldname, newname );
 }
