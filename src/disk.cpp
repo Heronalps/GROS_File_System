@@ -108,7 +108,7 @@ TEST_CASE( "Disk emulator can be accessed properly", "[disk]" ) {
         int ret = gros_write_block( disk, block_num, buf );
         REQUIRE( ret != 0 );
     }
-    close_disk(disk);
+    gros_close_disk(disk);
 }
 
 TEST_CASE( "Testing Catch", "[test]" ) {
