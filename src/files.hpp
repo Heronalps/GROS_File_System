@@ -165,6 +165,22 @@ DirEntry * readdir( Disk * disk, Inode * dir );
 
 
 /**
+ * Readdir_r takes an inode corresponding to a directory file, a pointer to the
+ *  caller's "current" direntry, and returns the next direntry in the out parameter
+ *  `result`. If `current` is NULL, then this returns the first direntry into
+ *  `result`. If there are no more direntries, then `result` will be NULL.
+ *
+ * @param Disk * disk         The disk containing the file system
+ * @param Inode * dir         directory instance
+ * @param DirEntry *current   Where to start traversing the directory from
+ * @param DirEntry **result   Out parameter for resulting direntry
+ *
+ * @returns int status
+ */
+int readdir_r( Disk * disk, Inode * dir, DirEntry *current, DirEntry **result);
+
+
+/**
 * Ensures that a file is at least `size` bytes long. If it is already
 *  `size` bytes, nothing happens and this returns 0. Otherwise, the
 *  file is allocated data blocks as necessary and zero-filled to be
