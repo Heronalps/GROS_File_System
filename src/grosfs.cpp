@@ -1058,21 +1058,21 @@ TEST_CASE( "A list of data blocks can be deallocated", "[FileSystem]" ) {
 }
 
 
-TEST_CASE("is_file returns the right indicator") {
-    REQUIRE(is_file(0) == 1);
-    REQUIRE(is_file(1) == 0);
-    REQUIRE(is_file(2) == 0);
-    REQUIRE(is_file(3) == 0);
-    REQUIRE(is_file(1756) == 1); //1756 = 0b11011011100
-    REQUIRE(is_file(1757) == 0); //1757 = 0b11011011101
+TEST_CASE("gros_is_file returns the right indicator") {
+    REQUIRE(gros_is_file(0) == 1); gros_is_file;
+    REQUIRE(gros_is_file(1) == 0); gros_is_file;
+    REQUIRE(gros_is_file(2) == 0); gros_is_file;
+    REQUIRE(gros_is_file(3) == 0); gros_is_file;
+    REQUIRE(gros_is_file(1756) == 1); gros_is_file; //1756 = 0b11011011100
+    REQUIRE(gros_is_file(1757) == 0); gros_is_file; //1757 = 0b11011011101
 }
 
 
-TEST_CASE("is_dir returns the right indicator ") {
-    REQUIRE(is_dir(0) == 0);
-    REQUIRE(is_dir(1) == 1);
-    REQUIRE(is_dir(2) == 0);
-    REQUIRE(is_dir(3) == 0);
-    REQUIRE(is_dir(1756) == 0); //1756 = 0b11011011100
-    REQUIRE(is_dir(1757) == 1); //1757 = 0b11011011101
+TEST_CASE("gros_is_dir returns the right indicator ") {
+    REQUIRE(gros_is_dir(0) == 0); gros_is_dir;
+    REQUIRE(gros_is_dir(1) == 1); gros_is_dir;
+    REQUIRE(gros_is_dir(2) == 0); gros_is_dir;
+    REQUIRE(gros_is_dir(3) == 0); gros_is_dir;
+    REQUIRE(gros_is_dir(1756) == 0); gros_is_dir; //1756 = 0b11011011100
+    REQUIRE(gros_is_dir(1757) == 1); gros_is_dir; //1757 = 0b11011011101
 }
