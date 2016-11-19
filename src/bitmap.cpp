@@ -44,7 +44,7 @@ int first_unset_bit( Bitmap * bm ) {
 }
 
 /**
- * Returns whether the bit at index `index` is set (1) or not (0). 
+ * Returns whether the bit at index `index` is set (1) or not (0).
  *  If `index` is out of bounds (0 < index < bm->size), then this returns 0.
  *
  * @param Bitmap *bm   The bitmap to check

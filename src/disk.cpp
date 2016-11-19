@@ -108,6 +108,7 @@ TEST_CASE( "Disk emulator can be accessed properly", "[disk]" ) {
         int ret = write_block( disk, block_num, buf );
         REQUIRE( ret != 0 );
     }
+    close_disk(disk);
 }
 
 TEST_CASE( "Testing Catch", "[test]" ) {
@@ -115,4 +116,3 @@ TEST_CASE( "Testing Catch", "[test]" ) {
     REQUIRE( 2 == 2 );
     //REQUIRE(3 == 2);
 }
-

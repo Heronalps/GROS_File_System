@@ -870,6 +870,7 @@ TEST_CASE( "OS File System can be properly created", "[FileSystem]" ) {
                  inode_count ); //The first inode number is zero.
         REQUIRE( superblock->free_inodes[ SB_ILIST_SIZE - 1 ] == 0 );
     }
+    close_disk(disk);
 }
 
 TEST_CASE( "A free inode can be found", "[FileSystem]" ) {
@@ -882,6 +883,7 @@ TEST_CASE( "A free inode can be found", "[FileSystem]" ) {
     read_block( disk, 0, ( char * ) superblock );
 
     REQUIRE( superblock->free_inodes[ 0 ] == -1 );
+    close_disk(disk);
 
 }
 
@@ -909,6 +911,7 @@ TEST_CASE( "Ilist can be repopulated correctly", "[FileSystem]" ) {
 
     REQUIRE( superblock->free_inodes[ 0 ] == -1 );
     REQUIRE( superblock->free_inodes[ 1 ] == 1 );
+    close_disk(disk);
 
 }
 
@@ -924,6 +927,8 @@ TEST_CASE( "An inode can be created", "[FileSystem]" ) {
     REQUIRE( inode->f_gid == 0 );
     REQUIRE( inode->f_links == 0 );
     REQUIRE( inode->f_block[ 0 ] == allocate_data_block( disk ) );
+
+    close_disk(disk);
     //To-do
     // How to test inode->f_ctime, inode->f_mtime, inode->f_atime
 
@@ -950,6 +955,7 @@ TEST_CASE( "An inode can be allocated", "[FileSystem]" ) {
                  sizeof( Inode ) );
 
     REQUIRE( ret_inode->f_inode_num == inode->f_inode_num );
+    close_disk(disk);
 }
 
 
@@ -963,6 +969,7 @@ TEST_CASE( "An inode can be saved back to disk", "[FileSystem]" ) {
     inode2 = get_inode( disk, inode_num );
 
     REQUIRE( inode2->f_inode_num == 1 );
+    close_disk(disk);
 
 }
 
@@ -984,6 +991,7 @@ TEST_CASE( "An inode and all its own resources can be deallocated",
                                  direct_blocks );
         REQUIRE( done == 0 );
     }
+    close_disk(disk);
 }
 
 TEST_CASE( "A data block can be allocated", "[FileSystem]" ) {
@@ -1001,6 +1009,8 @@ TEST_CASE( "A data block can be allocated", "[FileSystem]" ) {
 
     int ret = allocate_data_block( disk );
     REQUIRE( ret == -1 );
+
+    close_disk(disk);
 }
 
 
@@ -1020,6 +1030,8 @@ TEST_CASE( "A data block can be deallocated", "[FileSystem]" ) {
                 buf );
     Bitmap * bm = init_bitmap( BLOCK_SIZE, buf );
     REQUIRE( unset_bit( bm, offset ) == offset );
+
+    close_disk(disk);
 }
 
 
@@ -1030,5 +1042,7 @@ TEST_CASE( "A list of data blocks can be deallocated", "[FileSystem]" ) {
     int done = 0;
     int ret = free_blocks_list( disk, ( int * ) inode->f_block, 0 );
     REQUIRE( ret == done );
+
+    close_disk(disk);
 
 }
