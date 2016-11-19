@@ -581,8 +581,7 @@ int i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
              inode->f_size );
 
     // add first entries to new directory
-    i_write( disk, new_dir, ( char * ) entries, 2 * sizeof( DirEntry ),
-             0 );
+    i_write( disk, new_dir, ( char * ) entries, 2 * sizeof( DirEntry ), 0 );
 
     // save directories back to disk
     save_inode( disk, inode );
@@ -675,8 +674,7 @@ int i_rename( Disk * disk, Inode * dir,
     while( ( direntry = readdir( disk, dir ) ) && status ) {
         if( ! strcmp( direntry->filename, oldname ) ) {
             memset( direntry->filename, 0, FILENAME_MAX_LENGTH );
-            strncpy( direntry->filename, newname,
-                     std::min( strlen( newname ) + 1, FILENAME_MAX_LENGTH ) );
+            strncpy( direntry->filename, newname, strlen( newname ) + 1 );
             i_write( disk, dir, ( char * ) direntry, sizeof( DirEntry ), offset );
             status = 0;
         }
@@ -718,7 +716,7 @@ int truncate( Disk * disk, const char * path, int size ) {
 //    how to know where at in directory and which entry to return next
 DirEntry * readdir( Disk * disk, Inode * dir ) {
     if( is_dir( dir->f_acl ) ) {
-        // TODO STUB
+//        readdir_r( disk, )
     }
     return NULL;
 }
