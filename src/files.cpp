@@ -574,6 +574,7 @@ int i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
     strcpy( entries[ 1 ].filename, ".." );
 
     new_dir->f_links = 2;
+    inode->f_links  += 1;
 
     // add new direntry to current directory
     i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
@@ -669,14 +670,17 @@ int i_rename( Disk * disk, Inode * dir,
               const char * oldname, const char * newname ) {
     DirEntry * direntry;
     int        status = 1;
+    int        offset = 0;
 
     while( ( direntry = readdir( disk, dir ) ) && status ) {
         if( ! strcmp( direntry->filename, oldname ) ) {
             memset( direntry->filename, 0, FILENAME_MAX_LENGTH );
             strncpy( direntry->filename, newname,
                      std::min( strlen( newname ) + 1, FILENAME_MAX_LENGTH ) );
+            i_write( disk, dir, ( char * ) direntry, sizeof( DirEntry ), offset );
             status = 0;
         }
+        offset += sizeof( DirEntry );
     }
 
     return status;
@@ -717,4 +721,23 @@ DirEntry * readdir( Disk * disk, Inode * dir ) {
         // TODO STUB
     }
     return NULL;
+}
+
+
+/**
+ * Readdir_r takes an inode corresponding to a directory file, a pointer to the
+ *  caller's "current" direntry, and returns the next direntry in the out parameter
+ *  `result`. If `current` is NULL, then this returns the first direntry into
+ *  `result`. If there are no more direntries, then `result` will be NULL.
+ *
+ * @param Disk * disk         The disk containing the file system
+ * @param Inode * dir         directory instance
+ * @param DirEntry *current   Where to start traversing the directory from
+ * @param DirEntry **result   Out parameter for resulting direntry
+ *
+ * @returns int status
+ */
+int readdir_r( Disk * disk, Inode * dir, DirEntry * current, DirEntry ** result ) {
+    // TODO STUB
+    return 0;
 }

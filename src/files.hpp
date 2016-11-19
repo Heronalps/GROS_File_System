@@ -176,7 +176,7 @@ DirEntry * readdir( Disk * disk, Inode * dir );
  *
  * @returns int status
  */
-int readdir_r( Disk * disk, Inode * dir, DirEntry *current, DirEntry **result);
+int readdir_r( Disk * disk, Inode * dir, DirEntry * current, DirEntry ** result );
 
 
 /**
