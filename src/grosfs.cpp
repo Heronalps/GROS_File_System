@@ -808,17 +808,20 @@ int allocate_data_block( Disk * disk ) {
     return -1;    // no blocks available
 }
 
-
-// TODO test function
 int is_file( short acl ) {
-    return ( ( acl << 13 ) & 0 );
+    int first_bit = acl & 1;
+    int second_bit = ((acl & 2) >> 1);
+
+    return (first_bit == 0 && second_bit == 0);
 }
 
-
-// TODO test function
 int is_dir( short acl ) {
-    return ( ( acl << 13 ) & 1 );
+    int first_bit = acl & 1;
+    int second_bit = ((acl & 2) >> 1);
+
+    return (first_bit == 1 && second_bit == 0);
 }
+
 
 
 TEST_CASE( "OS File System can be properly created", "[FileSystem]" ) {
@@ -1045,4 +1048,24 @@ TEST_CASE( "A list of data blocks can be deallocated", "[FileSystem]" ) {
 
     close_disk(disk);
 
+}
+
+
+TEST_CASE("is_file returns the right indicator") {
+    REQUIRE(is_file(0) == 1);
+    REQUIRE(is_file(1) == 0);
+    REQUIRE(is_file(2) == 0);
+    REQUIRE(is_file(3) == 0);
+    REQUIRE(is_file(1756) == 1); //1756 = 0b11011011100
+    REQUIRE(is_file(1757) == 0); //1757 = 0b11011011101
+}
+
+
+TEST_CASE("is_dir returns the right indicator ") {
+    REQUIRE(is_dir(0) == 0);
+    REQUIRE(is_dir(1) == 1);
+    REQUIRE(is_dir(2) == 0);
+    REQUIRE(is_dir(3) == 0);
+    REQUIRE(is_dir(1756) == 0); //1756 = 0b11011011100
+    REQUIRE(is_dir(1757) == 1); //1757 = 0b11011011101
 }
