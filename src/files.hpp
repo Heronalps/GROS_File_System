@@ -16,7 +16,6 @@
 typedef struct _direntry {
     int  inode_num;                       /* inode of file */
     char filename[ FILENAME_MAX_LENGTH ]; /* the filename */
-
 } DirEntry;
 
 
@@ -26,7 +25,7 @@ typedef struct _direntry {
  *
  *  @param Disk * disk   Disk containing the file system
  */
-void mkroot( Disk * disk );
+void gros_mkroot( Disk * disk );
 
 
 /**
@@ -35,7 +34,7 @@ void mkroot( Disk * disk );
 * @param Disk * disk  Disk containing the file system
 * @param char * path  Path to the file, starting from root "/"
 */
-int namei( Disk * disk, const char * path );
+int gros_namei( Disk * disk, const char * path );
 
 
 /**
@@ -49,11 +48,12 @@ int namei( Disk * disk, const char * path );
 * @param int      size     Number of bytes to read
 * @param int      offset   Offset into the file to start reading from
 */
-int i_read( Disk * disk, Inode * inode, char * buf, int size, int offset );
+int gros_i_read( Disk * disk, Inode * inode, char * buf, int size, int offset );
 
 
 /* @param char*  path     FULL path (from root "/") to the file */
-int read( Disk * disk, const char * path, char * buf, int size, int offset );
+int gros_read( Disk * disk, const char * path, char * buf, int size,
+               int offset );
 
 
 /**
@@ -67,11 +67,12 @@ int read( Disk * disk, const char * path, char * buf, int size, int offset );
 * @param int      size     Number of bytes to write
 * @param int      offset   Offset into the file to start writing to
 */
-int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset );
+int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset );
 
 
 /* @param char*  path     FULL path (from root "/") to the file */
-int write( Disk * disk, const char * path, char * buf, int size, int offset );
+int gros_write( Disk * disk, const char * path, char * buf, int size,
+                int offset );
 
 
 /**
@@ -81,11 +82,11 @@ int write( Disk * disk, const char * path, char * buf, int size, int offset );
 * @param Inode *  inode    Inode of directory in which to place new file
 * @param char  *  filename  Name of new file
 */
-int i_mknod( Disk * disk, Inode * inode, const char * filename );
+int gros_i_mknod( Disk * disk, Inode * inode, const char * filename );
 
 
 /* @param char*  path     FULL path (from root "/") to place the new file */
-int mknod( Disk * disk, const char * path );
+int gros_mknod( Disk * disk, const char * path );
 
 
 /**
@@ -95,11 +96,11 @@ int mknod( Disk * disk, const char * path );
 * @param Inode *  inode    Inode of directory in which to place new directory
 * @param char  *  dirname  Name of new directory
 */
-int i_mkdir( Disk * disk, Inode * inode, const char * dirname );
+int gros_i_mkdir( Disk * disk, Inode * inode, const char * dirname );
 
 
 /* @param char*  path     FULL path (from root "/") to place the new directory */
-int mkdir( Disk * disk, const char * path );
+int gros_mkdir( Disk * disk, const char * path );
 
 
 /**
@@ -111,11 +112,11 @@ int mkdir( Disk * disk, const char * path );
 * @param Inode *  inode    Inode of directory containing directory to delete
 * @param char  *  dirname  Name of directory to delete
 */
-int i_rmdir( Disk * disk, Inode * inode, const char * dirname );
+int gros_i_rmdir( Disk * disk, Inode * inode, const char * dirname );
 
 
 /* @param char*  path     FULL path (from root "/") to directory the remove */
-int rmdir( Disk * disk, const char * path );
+int gros_rmdir( Disk * disk, const char * path );
 
 
 /**
@@ -125,11 +126,11 @@ int rmdir( Disk * disk, const char * path );
 * @param Inode *  inode      Inode of directory containing file to delete
 * @param char  *  filename   Name of file to delete
 */
-int i_unlink( Disk * disk, Inode * inode, const char * filename );
+int gros_i_unlink( Disk * disk, Inode * inode, const char * filename );
 
 
 /* @param char*  path       FULL path (from root "/") to the file */
-int unlink( Disk * disk, const char * path );
+int gros_unlink( Disk * disk, const char * path );
 
 
 /**
@@ -140,10 +141,11 @@ int unlink( Disk * disk, const char * path );
 * @param char  *  oldname    Name of file to rename
 * @param char  *  oldname    New name for file
 */
-int i_rename( Disk * disk, Inode * inode, const char * oldname, const char * newname );
+int gros_i_rename( Disk * disk, Inode * inode, const char * oldname,
+                   const char * newname );
 
 /* @param char*  path       FULL path (from root "/") to the file */
-int rename( Disk * disk, const char * path, const char * newname );
+int gros_rename( Disk * disk, const char * path, const char * newname );
 
 /**
 * Truncates or extends the file to a specified length
@@ -152,15 +154,11 @@ int rename( Disk * disk, const char * path, const char * newname );
 * @param Inode *  inode    Inode corresponding to the file to resize
 * @param int      size     Desired file size
 */
-int i_truncate( Disk * disk, Inode * inode, int size );
+int gros_i_truncate( Disk * disk, Inode * inode, int size );
 
 
 /* @param char*  path     FULL path (from root "/") to the file */
-int truncate( Disk * disk, const char * path, int size );
-
-
-/* @param Inode * dir       directory instance */
-DirEntry * readdir( Disk * disk, Inode * dir );
+int gros_truncate( Disk * disk, const char * path, int size );
 
 
 /**
@@ -176,7 +174,12 @@ DirEntry * readdir( Disk * disk, Inode * dir );
  *
  * @returns int status
  */
-int readdir_r( Disk * disk, Inode * dir, DirEntry * current, DirEntry ** result );
+int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
+                    DirEntry ** result );
+
+
+/* @param Inode * dir       directory instance */
+DirEntry * gros_readdir( Disk * disk, Inode * dir );
 
 
 /**
@@ -189,11 +192,11 @@ int readdir_r( Disk * disk, Inode * dir, DirEntry * current, DirEntry ** result 
 * @param Inode *  inode    Inode corresponding to the file to resize
 * @param int      size     Desired file size
 */
-int i_ensure_size( Disk * disk, Inode * inode, int size );
+int gros_i_ensure_size( Disk * disk, Inode * inode, int size );
 
 
 /* @param char*  path     FULL path (from root "/") to the file */
-int ensure_size( Disk * disk, const char * path, int size );
+int gros_ensure_size( Disk * disk, const char * path, int size );
 
 
 

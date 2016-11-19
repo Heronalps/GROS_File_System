@@ -10,7 +10,7 @@
  *  Disk size will be EMULATOR_SIZE defined in "grosfs.h"
  *  Disk * mem will be a char array of EMULATOR_SIZE items
  */
-Disk * open_disk() {
+Disk * gros_open_disk() {
     Disk * disk = new Disk();
     disk->size  = EMULATOR_SIZE;
     disk->mem   = new char[ EMULATOR_SIZE ];
@@ -23,7 +23,7 @@ Disk * open_disk() {
  *
  * @param Disk * disk    The pointer to the disk to close
  */
-void close_disk( Disk * disk ) {
+void gros_close_disk( Disk * disk ) {
     delete [] disk->mem;
     delete    disk;
 }
@@ -36,7 +36,7 @@ void close_disk( Disk * disk ) {
  * @param char * buf        Pointer to the destination for the read data
  *                        * Must be allocated to be size BLOCK_SIZE
  */
-int read_block( Disk * disk, int block_num, char * buf ) {
+int gros_read_block( Disk * disk, int block_num, char * buf ) {
     if( block_num < 0 )
         return -1;
 
@@ -56,7 +56,7 @@ int read_block( Disk * disk, int block_num, char * buf ) {
  * @param char * buf        Pointer to the data to write
  *                        * Must be allocated to be size BLOCK_SIZE
  */
-int write_block( Disk * disk, int block_num, char * buf ) {
+int gros_write_block( Disk * disk, int block_num, char * buf ) {
     if( block_num < 0 )
         return -1;
 
@@ -70,42 +70,42 @@ int write_block( Disk * disk, int block_num, char * buf ) {
 
 TEST_CASE( "Disk emulator can be accessed properly", "[disk]" ) {
 
-    Disk * disk = open_disk();
+    Disk * disk = gros_open_disk();
     char buf[BLOCK_SIZE];
 
     REQUIRE( disk->size == EMULATOR_SIZE );
     REQUIRE( disk->mem != NULL );
     REQUIRE( disk->fp == NULL );
 
-    SECTION( "read_block will read out BLOCK_SIZE bytes" ) {
-        int ret = read_block( disk, 0, buf );
+    SECTION( "gros_read_block will gros_read out BLOCK_SIZE bytes" ) {
+        int ret = gros_read_block( disk, 0, buf );
         REQUIRE( ret == 0 );
     }
 
-    SECTION( "read_block will fail on a negative block number" ) {
-        int ret = read_block( disk, -1, buf );
+    SECTION( "gros_read_block will fail on a negative block number" ) {
+        int ret = gros_read_block( disk, -1, buf );
         REQUIRE( ret != 0 );
     }
 
-    SECTION( "read_block will fail on a block number that is out of range" ) {
+    SECTION( "gros_read_block will fail on a block number that is out of range" ) {
         int block_num = ( disk->size / BLOCK_SIZE ) + 1;
-        int ret = read_block( disk, block_num, buf );
+        int ret = gros_read_block( disk, block_num, buf );
         REQUIRE( ret != 0 );
     }
 
-    SECTION( "write_block will write out BLOCK_SIZE bytes" ) {
-        int ret = write_block( disk, 0, buf );
+    SECTION( "gros_write_block will gros_write out BLOCK_SIZE bytes" ) {
+        int ret = gros_write_block( disk, 0, buf );
         REQUIRE( ret == 0 );
     }
 
-    SECTION( "write_block will fail on a negative block number" ) {
-        int ret = write_block( disk, -1, buf );
+    SECTION( "gros_write_block will fail on a negative block number" ) {
+        int ret = gros_write_block( disk, -1, buf );
         REQUIRE( ret != 0 );
     }
 
-    SECTION( "write_block will fail on a block number that is out of range" ) {
+    SECTION( "gros_write_block will fail on a block number that is out of range" ) {
         int block_num = ( disk->size / BLOCK_SIZE ) + 1;
-        int ret = write_block( disk, block_num, buf );
+        int ret = gros_write_block( disk, block_num, buf );
         REQUIRE( ret != 0 );
     }
     close_disk(disk);

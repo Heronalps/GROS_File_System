@@ -79,7 +79,7 @@ typedef struct _inode { // 106 bytes
  *
  * @param Disk * disk    The disk for the new file system
  */
-void make_fs( Disk * disk ); // initialize the file system
+void gros_make_fs( Disk * disk ); // initialize the file system
 
 
 /**
@@ -89,7 +89,7 @@ void make_fs( Disk * disk ); // initialize the file system
  * @param int    num_inode_blocks The number of blocks allocated for inodes
  * @param int    inode_per_block  The number of inodes per block on disk
  */
-void init_inodes( Disk * disk, int num_inode_blocks, int inode_per_block );
+void gros_init_inodes( Disk * disk, int num_inode_blocks, int inode_per_block );
 
 
 /**
@@ -101,7 +101,7 @@ void init_inodes( Disk * disk, int num_inode_blocks, int inode_per_block );
  *
  * @param Disk * disk    The disk that contains the file system
  */
-void fsck( Disk * disk );    // recover the file system
+void gros_fsck( Disk * disk );    // recover the file system
 
 
 /**
@@ -112,7 +112,7 @@ void fsck( Disk * disk );    // recover the file system
  * @param   char        * filename    The file name to get path for
  * @return  const char  *             String path to inode number
  */
-const char * pwd( Disk * disk, Inode * parent_dir, char * filename );
+const char * gros_pwd( Disk * disk, Inode * parent_dir, char * filename );
 
 
 /**
@@ -123,7 +123,7 @@ const char * pwd( Disk * disk, Inode * parent_dir, char * filename );
  * @param   Inode * dir    The directory to traverse
  * @return  char  *        Directory name
  */
-char * get_path_to_root( Disk * disk, char * path, Inode * dir );
+char * gros_get_path_to_root( Disk * disk, char * path, Inode * dir );
 
 
 /**
@@ -134,7 +134,7 @@ char * get_path_to_root( Disk * disk, char * path, Inode * dir );
  * @param   int    inode_num     The inode number to search for
  * @return  int                  1 success, 0 failure
  */
-int check_parent( Disk * disk, int parent_num, int inode_num );
+int gros_check_parent( Disk * disk, int parent_num, int inode_num );
 
 
 /**
@@ -145,7 +145,7 @@ int check_parent( Disk * disk, int parent_num, int inode_num );
  * @param  int     inode_num      The inode number to count links for
  * @param  int     links          The current number of links
  */
-int count_links( Disk * disk, Inode * dir, int inode_num, int links );
+int gros_count_links( Disk * disk, Inode * dir, int inode_num, int links );
 
 
 /**
@@ -156,7 +156,7 @@ int count_links( Disk * disk, Inode * dir, int inode_num, int links );
  * @param int  *  allocd_blocks  The list of allocated data blocks
  * @param int     block_num      The block to check against list
  */
-int check_blocks( Disk * disk, int * allocd_blocks, int block_num );
+int gros_check_blocks( Disk * disk, int * allocd_blocks, int block_num );
 
 
 /**
@@ -164,7 +164,7 @@ int check_blocks( Disk * disk, int * allocd_blocks, int block_num );
  *
  * @param Disk * disk    The disk that contains the file system
  */
-Inode * find_free_inode( Disk * disk );
+Inode * gros_find_free_inode( Disk * disk );
 
 
 /**
@@ -173,7 +173,7 @@ Inode * find_free_inode( Disk * disk );
  * @param Disk  * disk        The disk containing the file system
  * @param Inode * inode_num   The inode to save
  */
-int save_inode( Disk * disk, Inode * inode );
+int gros_save_inode( Disk * disk, Inode * inode );
 
 
 /**
@@ -182,7 +182,7 @@ int save_inode( Disk * disk, Inode * inode );
 * @param Disk * disk         The disk that contains the file system
 * @param int    inode_index  The
 */
-void repopulate_ilist( Disk * disk, int inode_index );
+void gros_repopulate_ilist( Disk * disk, int inode_index );
 
 
 /**
@@ -190,7 +190,7 @@ void repopulate_ilist( Disk * disk, int inode_index );
  *
  * @param  Disk * disk   The disk that contains the file system
  */
-Inode * new_inode( Disk * disk );
+Inode * gros_new_inode( Disk * disk );
 
 
 /**
@@ -199,7 +199,7 @@ Inode * new_inode( Disk * disk );
  * @param  Disk * disk      The disk that contains the file system
  * @param  int    inode_num The inode number to retrieve from disk
  */
-Inode * get_inode( Disk * disk, int inode_num );
+Inode * gros_get_inode( Disk * disk, int inode_num );
 
 
 /**
@@ -208,7 +208,7 @@ Inode * get_inode( Disk * disk, int inode_num );
  * @param Disk  *  disk   The disk containing the file system
  * @param Inode *  inode  The inode to deallocate
  */
-void free_inode( Disk * disk, Inode * inode );
+void gros_free_inode( Disk * disk, Inode * inode );
 
 
 /**
@@ -217,7 +217,7 @@ void free_inode( Disk * disk, Inode * inode );
  * @param Disk * disk       The disk containing the file system
  * @param int    inode_num  The inode number to put on free list
  */
-void update_free_list( Disk * disk, int inode_num );
+void gros_update_free_list( Disk * disk, int inode_num );
 
 
 /**
@@ -226,7 +226,7 @@ void update_free_list( Disk * disk, int inode_num );
  * @param Disk * disk         The disk containing the file system
  * @param int    block_index  The block number of the block to deallocate
  */
-void free_data_block( Disk * disk, int block_index );
+void gros_free_data_block( Disk * disk, int block_index );
 
 
 /**
@@ -236,7 +236,7 @@ void free_data_block( Disk * disk, int block_index );
  *
  * @param Disk * disk    The disk containing the file system
  */
-int allocate_data_block( Disk * disk );
+int gros_allocate_data_block( Disk * disk );
 
 
 /**
@@ -247,13 +247,13 @@ int allocate_data_block( Disk * disk );
  *  @param int    n      The number of block numbers in `list`
  *  @return              1 upon successful deallocation
  */
-int free_blocks_list( Disk * disk, int * block_list, int n );
+int gros_free_blocks_list( Disk * disk, int * block_list, int n );
 
 
-int is_file( short acl );
+int gros_is_file( short acl );
 
 
-int is_dir( short acl );
+int gros_is_dir( short acl );
 
 
 #endif

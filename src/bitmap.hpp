@@ -22,7 +22,7 @@ typedef struct _bitmap {
  *  @param int    size  The number of addressable elements
  *  @param char * buf   A pointer to array of bytes containing the data structure
  */
-Bitmap * init_bitmap( int size, char * buf );
+Bitmap * gros_init_bitmap( int size, char * buf );
 
 /**
  * Returns the index of the first bit which is set to 0 (i.e. unused).
@@ -30,7 +30,7 @@ Bitmap * init_bitmap( int size, char * buf );
  *
  * @param Bitmap * bm   The bitmap to check
  */
-int first_unset_bit( Bitmap * bm );
+int gros_first_unset_bit( Bitmap * bm );
 
 /**
  * Returns whether the bit at index `index` is set (1) or not (0). 
@@ -39,7 +39,7 @@ int first_unset_bit( Bitmap * bm );
  * @param Bitmap * bm       The bitmap to check
  * @param int      index    The index to check in the bitmap
  */
-short is_bit_set( Bitmap * bm, int index );
+short gros_is_bit_set( Bitmap * bm, int index );
 
 /**
  * Sets the bit at index `index` to 1, indicating that that index is now in use.
@@ -49,7 +49,7 @@ short is_bit_set( Bitmap * bm, int index );
  * @param Bitmap * bm       The bitmap to check
  * @param int      index    The index to check in the bitmap
  */
-int set_bit( Bitmap * bm, int index );
+int gros_set_bit( Bitmap * bm, int index );
 
 /**
  * Sets the bit at index `index` to 0, indicating that that index is no longer in use.
@@ -59,7 +59,7 @@ int set_bit( Bitmap * bm, int index );
  * @param Bitmap * bm       The bitmap to check
  * @param int      index    The index to check in the bitmap
  */
-int unset_bit( Bitmap * bm, int index );
+int gros_unset_bit( Bitmap * bm, int index );
 
 
 #endif 
