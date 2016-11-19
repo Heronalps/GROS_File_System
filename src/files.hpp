@@ -140,8 +140,7 @@ int unlink( Disk * disk, const char * path );
 * @param char  *  oldname    Name of file to rename
 * @param char  *  oldname    New name for file
 */
-int i_rename( Disk * disk, Inode * inode, const char * oldname,
-const char * newname );
+int i_rename( Disk * disk, Inode * inode, const char * oldname, const char * newname );
 
 /* @param char*  path       FULL path (from root "/") to the file */
 int rename( Disk * disk, const char * path, const char * newname );

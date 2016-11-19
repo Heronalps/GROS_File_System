@@ -372,7 +372,8 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                 si = diblock[ di_index ];
                 write_block( disk, inode->f_block[ DOUBLE_INDRCT ],
                              ( char * ) diblock );
-            } else if( ti_index != -1 && di_index != -1 && si == -1 ) {
+            }
+            else if( ti_index != -1 && di_index != -1 && si == -1 ) {
                 // if we're in a single indirect block from a double indirect (itself from
                 // a triple indirect), but it hasn't been allocated yet
                 // make sure all blocks before <this> single indirect block
@@ -542,7 +543,6 @@ int mknod( Disk * disk, const char * path ) {
     file += 1; // skip over delimiter
 
     strcpy( new_path, path );
-    // TODO what is this index ?
     int index             = ( int ) ( file - path );
     new_path[ index - 1 ] = '\0'; // cuts off filename
     Inode * inode         = get_inode( disk, namei( disk, new_path ) );
@@ -606,7 +606,6 @@ int mkdir( Disk * disk, const char * path ) {
 
     strcpy( new_path, path );
     // add null terminator to end of filename
-//    TODO not sure what index is dir - path
     new_path[ ( int ) ( dir - path ) - 1 ] = '\0';
     Inode * inode = get_inode( disk, namei( disk, new_path ) );
 
@@ -662,14 +661,25 @@ int unlink( Disk * disk, const char * path ) {
 * Renames a file or directory
 *
 * @param Disk  *  disk       Disk containing the file system
-* @param Inode *  inode      Inode of directory containing file to rename
+* @param Inode *  dir        Inode of directory containing file to rename
 * @param char  *  oldname    Name of file to rename
 * @param char  *  oldname    New name for file
 */
-int i_rename( Disk * disk, Inode * inode,
+int i_rename( Disk * disk, Inode * dir,
               const char * oldname, const char * newname ) {
-    // TODO STUB
-    return 0;
+    DirEntry * direntry;
+    int        status = 1;
+
+    while( ( direntry = readdir( disk, dir ) ) && status ) {
+        if( ! strcmp( direntry->filename, oldname ) ) {
+            memset( direntry->filename, 0, FILENAME_MAX_LENGTH );
+            strncpy( direntry->filename, newname,
+                     std::min( strlen( newname ) + 1, FILENAME_MAX_LENGTH ) );
+            status = 0;
+        }
+    }
+
+    return status;
 }
 
 
@@ -694,6 +704,7 @@ int i_truncate( Disk * disk, Inode * inode, int size ) {
 }
 
 
+// TODO check for correct filename
 int truncate( Disk * disk, const char * path, int size ) {
     return i_truncate( disk, get_inode( disk, namei( disk, path ) ), size );
 }
