@@ -402,8 +402,8 @@ int i_write( Disk * disk, Inode * inode, char * buf, int size, int offset ) {
                 read_block( disk, si, ( char * ) siblock );
             }
             // relative index into single indirects
-            block_to_write = siblock[ block_to_write - SINGLE_INDRCT ];
             si_index = block_to_write - SINGLE_INDRCT;
+            block_to_write = siblock[ si_index ];
         }
         /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
          * since ti_index, di_index, si_index, inode->f_block[13], inode->f_block[12]
@@ -496,7 +496,24 @@ int write( Disk * disk, const char * path, char * buf, int size, int offset ) {
  * @param int    size     Desired file size
  */
 int i_ensure_size( Disk * disk, Inode * inode, int size ) {
-    return -1; // stub
+    int          file_size;         /* file size, i.e. inode->f_size */
+    int          offset;            /* where to start allocating from */
+    int          bytes_to_allocate; /* bytes to read from cur_block */
+    char       * wrdata;            /* zero-filled data to write into file */
+
+    file_size = inode->f_size;
+
+    // if we don't have to extend, don't extend. ¯\_(ツ)_/¯
+    if (file_size >= size) {
+      return 0;
+    }
+
+    bytes_to_allocate = size - file_size;
+    wrdata = (char *)calloc(bytes_to_allocate, sizeof(char));
+    offset = file_size;
+    i_write(disk, inode, wrdata, bytes_to_allocate, offset);
+
+    return bytes_to_allocate;
 }
 
 int ensure_size( Disk * disk, char * path, int size ) {
@@ -701,7 +718,174 @@ int rename( Disk * disk, const char * path, const char * newname ) {
 * @param int      size     Desired file size
 */
 int i_truncate( Disk * disk, Inode * inode, int size ) {
-    // TODO STUB
+    char         data[ BLOCK_SIZE ]; /* buffer to read file contents into */
+    int          block_size;         /* fs block size */
+    int          file_size;          /* file size, i.e. inode->f_size */
+    int          n_indirects;        /* how many ints can fit in a block */
+    int          n_indirects_sq;     /* n_indirects * n_indirects */
+    int          cur_block;          /* current block (relative to file) to free */
+    int          block_to_free;      /* current block (relative to fs) to free */
+    int          bytes_to_dealloc;   /* bytes to free from cur_block */
+    int          cur_si     = -1;    /* id of blocks last read into siblock */
+    int          cur_di     = -1;    /* id of blocks last read into diblock */
+    int          si         = -1;    /* id of siblock that we need */
+    int          di         = -1;    /* id of diblock that we need */
+    int          si_index   = -1;    /* index into siblock for data */
+    int          di_index   = -1;    /* index into diblock for siblock */
+    int          ti_index   = -1;    /* index into tiblock for diblock */
+    int        * siblock;            /* buffer to store indirects */
+    int        * diblock;            /* buffer to store indirects */
+    int        * tiblock;            /* buffer to store indirects */
+    Superblock * superblock;         /* reference to a superblock */
+    int done = 0; /* whether we are done truncating */
+    int last_of_file = 1; /* whether this is last block of file */
+    int offset;
+    int tmp;
+
+    file_size = inode->f_size;
+    // by default, the double indirect block we read from is the one given in
+    // the inode. this will change if we are in the triple indirect block
+    di = inode->f_block[ DOUBLE_INDRCT ];
+    // by default, the single indirect block we read from is the one given in
+    // the inode. this will change if we are in the double indirect block
+    si = inode->f_block[ SINGLE_INDRCT ];
+
+    // handles extending case
+    i_ensure_size(disk, inode, size);
+    // if we the file is already `size`, then return
+    if (inode->f_size == size) {
+      return 0;
+    }
+    offset = size;
+
+    // get the superblock so we can get the data we need about the file system
+    read_block( disk, 0, data );
+    superblock      = ( Superblock * ) data;
+    block_size      = superblock->fs_block_size;
+    // the number of indirects a block can have
+    n_indirects     = block_size / sizeof( int );
+    n_indirects_sq  = n_indirects * n_indirects;
+    // this is the file's n-th block that we will free
+    cur_block       = offset / block_size;
+
+    // while we have more blocks to free
+    while( !done ) {
+        // tmp var to store index into indirect blocks if necessary
+        block_to_free = cur_block;
+
+        // in a triple indirect block
+        if( block_to_free >= ( n_indirects_sq + SINGLE_INDRCT ) ) {
+            // if we haven't fetched the triple indirect block yet, do so now
+            if( tiblock == NULL ) {
+                tiblock = new int[ n_indirects ];
+                read_block( disk,
+                            inode->f_block[ TRIPLE_INDRCT ],
+                            ( char * ) tiblock );
+            }
+
+            // subtracting n^2+n+12 to obviate lower layers of indirection
+            ti_index =
+                    ( block_to_free - ( n_indirects_sq
+                                        + n_indirects
+                                        + SINGLE_INDRCT ) )
+                    / n_indirects_sq;
+            // get the double indirect block that contains the block we need to free
+            di = tiblock[ ti_index ];
+            // since we're moving onto double indirect addressing, subtract all
+            // triple indirect related index information
+            block_to_free -= ti_index * n_indirects_sq; /* still >= n+12 */
+        }
+
+        // in a double indirect block
+        if( block_to_free >= ( n_indirects + SINGLE_INDRCT ) ) {
+            diblock = diblock == NULL ? ( new int[ n_indirects ] ) : diblock;
+            if( cur_di != di ) {
+                cur_di = di;
+                read_block( disk, di, ( char * ) diblock );
+            }
+            // subtracting n+12 to obviate lower layers of indirection
+            di_index = ( block_to_free - ( n_indirects + SINGLE_INDRCT ) ) /
+                      n_indirects;
+            // get the single indirect block that contains the block we need to free
+            si = diblock[ di_index ];
+            // since we're moving onto single indirect addressing, subtract all
+            // double indirect related index information
+            block_to_free -= di_index * n_indirects; /* still >= 12 */
+        }
+
+        // in a single indirect block
+        if( block_to_free >= SINGLE_INDRCT ) {
+            siblock = siblock == NULL ? ( new int[ n_indirects ] ) : siblock;
+            // if we dont' already have the single indirects loaded into memory, load it
+            if( cur_si != si ) {
+                cur_si = si;
+                read_block( disk, si, ( char * ) siblock );
+            }
+            // relative index into single indirects
+            si_index = block_to_free - SINGLE_INDRCT;
+            block_to_free = siblock[ si_index ];
+        }
+
+        // in a direct block
+        if( cur_block < SINGLE_INDRCT ) {
+            tmp = block_to_free;
+            block_to_free = inode->f_block[ block_to_free ];
+        }
+
+        // if this block is not allocated, we've reached the end of the original
+        // file's length and we can stop free-ing
+        if (block_to_free == -1) {
+          done = 1;
+        } else if (last_of_file == 1) { // if this block contains the new end of file
+          bytes_to_dealloc = block_size - (inode->f_size % block_size);
+          read_block( disk, block_to_free, data );
+          // set zeros from the new end of the file to the end of the block
+          std::memset(data + (inode->f_size % block_size), 0, bytes_to_dealloc);
+          // save the block back
+          write_block(disk, block_to_free, data);
+          last_of_file = 0;
+        } else { // just free this block
+          free_data_block(disk, block_to_free);
+
+          if (si_index != -1) {
+            siblock[si_index] = -1;
+            write_block(disk, si, (char*) siblock);
+            if (si_index == (n_indirects-1) && di_index != -1) {
+              free_data_block(disk, diblock[di_index]);
+              diblock[di_index] = -1;
+              write_block(disk, di, (char*) diblock);
+              if (di_index == (n_indirects-1) && ti_index != -1) {
+                free_data_block(disk, diblock[di_index]);
+                tiblock[ti_index] = -1;
+                write_block(disk, inode->f_block[ TRIPLE_INDRCT ], (char*) tiblock);
+                if (ti_index == (n_indirects-1)) {
+                  free_data_block(disk, inode->f_block[ TRIPLE_INDRCT ]);;
+                  inode->f_block[ TRIPLE_INDRCT ] = -1;
+                }
+              } else if (di_index == (n_indirects-1) && ti_index == -1) {
+                free_data_block(disk, inode->f_block[ DOUBLE_INDRCT ]);;
+                inode->f_block[ DOUBLE_INDRCT ] = -1;
+              }
+            } else if (si_index == (n_indirects-1) && di_index == -1) {
+              free_data_block(disk, inode->f_block[ SINGLE_INDRCT ]);;
+              inode->f_block[ SINGLE_INDRCT ] = -1;
+            }
+          } else { // si_index == -1
+            inode->f_block[ tmp ] = -1;
+          }
+        }
+
+        cur_block++;
+    }
+
+    // free up the resources we allocated
+    if( siblock != NULL ) delete[] siblock;
+    if( diblock != NULL ) delete[] diblock;
+    if( tiblock != NULL ) delete[] tiblock;
+
+    inode->f_size = size;
+    save_inode(disk, inode);
+
     return 0;
 }
 
