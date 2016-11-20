@@ -30,27 +30,27 @@ Disk * gros_open_disk();
  * Effectively closes a connection to the disk emulator, deleting
  * memory in disk->mem and deleting the Disk object.
  *
- * @param Disk *disk    The pointer to the disk to close
+ * @param Disk * disk    The pointer to the disk to close
  */
 void gros_close_disk( Disk * disk );
 
 /**
  * Read a block from the disk into a provided buffer.
  *
- * @param Disk *disk      The pointer to the disk to read from
- * @param int block_num   Index of block to read
- * @param char *buf       Pointer to the destination for the read data
- *                        * Must be allocated to be size BLOCK_SIZE
+ * @param Disk * disk       The pointer to the disk to read from
+ * @param int    block_num  Index of block to read
+ * @param char * buf        Pointer to the destination for the read data
+ *                          * Must be allocated to be size BLOCK_SIZE
  */
 int gros_read_block( Disk * disk, int block_num, char * buf );
 
 /**
  * Write a block from a provided buffer to the disk.
  *
- * @param Disk *disk      The pointer to the disk to write to
- * @param int block_num   Index of block to write
- * @param char *buf       Pointer to the data to write
- *                        * Must be allocated to be size BLOCK_SIZE
+ * @param Disk * disk       The pointer to the disk to write to
+ * @param int    block_num  Index of block to write
+ * @param char * buf        Pointer to the data to write
+ *                          * Must be allocated to be size BLOCK_SIZE
  */
 int gros_write_block( Disk * disk, int block_num, char * buf );
 

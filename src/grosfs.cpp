@@ -616,6 +616,7 @@ int gros_save_inode( Disk * disk, Inode * inode ) {
     int          inodes_per_block;
     int          inode_num;
     int          rel_inode_index;
+    int          status;
     char         buf[ BLOCK_SIZE ];
     Superblock * superblock;
 
@@ -630,11 +631,14 @@ int gros_save_inode( Disk * disk, Inode * inode ) {
 
     // save the inode to disk
     gros_read_block( disk, block_num, buf );
-    std::memcpy( ( & ( ( Inode * ) buf )[ rel_inode_index ] ),
-                 inode,
+    std::memcpy( ( & ( ( Inode * ) buf )[ rel_inode_index ] ), inode,
                  sizeof( Inode ) );
-    gros_write_block( disk, block_num, buf );
-    return inode_num;
+
+    // check if write back successful ( 0 = success ), else return error
+    if( ! ( status = gros_write_block( disk, block_num, buf ) ) )
+        return inode_num;
+    else
+        return status;
 }
 
 
@@ -719,7 +723,6 @@ void gros_update_free_list( Disk * disk, int inode_num ) {
     gros_read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
     i          = 0;
-//    i          = SB_ILIST_SIZE - 2;
 
     // scan list for empty space
     while( i < SB_ILIST_SIZE && superblock->free_inodes[ i ] > 0 )
