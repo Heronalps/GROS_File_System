@@ -50,9 +50,26 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     stbuf->st_ino = inode_num;
     stbuf->st_uid = inode->f_uid;
     stbuf->st_gid = inode->f_gid;
-    stbuf->st_atimespec = inode->f_atime;
-    stbuf->st_mtimespec = inode->f_mtime;
-    stbuf->st_ctimespec = inode->f_ctime;
+
+    #if defined(__APPLE__) || defined(__MACH__)
+        struct timespec a, m, c;
+
+        a.tv_sec = inode->f_atime / 1000;
+        a.tv_nsec = (inode->f_atime % 1000) * 1000000;
+        m.tv_sec = inode->f_mtime / 1000;
+        m.tv_nsec = (inode->f_mtime % 1000) * 1000000;
+        c.tv_sec = inode->f_ctime / 1000;
+        c.tv_nsec = (inode->f_ctime % 1000) * 1000000;
+
+        stbuf->st_atimespec = a;
+        stbuf->st_mtimespec = m;
+        stbuf->st_ctimespec = c;
+    #else
+        stbuf->st_atime = inode->f_atime;
+        stbuf->st_mtime = inode->f_mtime;
+        stbuf->st_ctime = inode->f_ctime;
+    #endif
+
     stbuf->st_nlink = inode->f_links;
     stbuf->st_size = inode->f_size;
     stbuf->st_blocks = ( inode->f_size / BLOCK_SIZE ) + 1;
@@ -462,4 +479,52 @@ grosfs_ioctl( const char * path, int cmd, void * arg, struct fuse_file_info * fi
 int grosfs_poll( const char * path, struct fuse_file_info * fi,
                struct fuse_pollhandle * ph, unsigned * reventsp ) {
     return 0; // leave unimplemented
+}
+
+int grosfs_create(char const*, unsigned int, fuse_file_info*) {
+    return 0;
+}
+
+void initfuseops() {
+	grosfs_oper.getattr     = grosfs_getattr;
+	grosfs_oper.readlink    = grosfs_readlink;
+	grosfs_oper.mknod       = grosfs_mknod;
+	grosfs_oper.mkdir       = grosfs_mkdir;
+	grosfs_oper.unlink      = grosfs_unlink;
+	grosfs_oper.rmdir       = grosfs_rmdir;
+	grosfs_oper.symlink     = grosfs_symlink;
+	grosfs_oper.rename      = grosfs_rename;
+	grosfs_oper.link        = grosfs_link;
+	grosfs_oper.chmod       = grosfs_chmod;
+	grosfs_oper.chown       = grosfs_chown;
+	grosfs_oper.truncate    = grosfs_truncate;
+	grosfs_oper.open        = grosfs_open;
+	grosfs_oper.read        = grosfs_read;
+	grosfs_oper.write       = grosfs_write;
+	grosfs_oper.statfs      = grosfs_statfs;
+	grosfs_oper.flush       = grosfs_flush;
+	grosfs_oper.release     = grosfs_release;
+	grosfs_oper.fsync       = grosfs_fsync;
+	#ifdef HAVE_SETXATTR
+	grosfs_oper.setxattr    = grosfs_setxattr;
+	grosfs_oper.getxattr    = grosfs_getxattr;
+	grosfs_oper.listxattr   = grosfs_listxattr;
+	#endif
+	grosfs_oper.opendir     = grosfs_opendir;
+	grosfs_oper.readdir     = grosfs_readdir;
+	grosfs_oper.releasedir  = grosfs_releasedir;
+	grosfs_oper.fsyncdir    = grosfs_fsyncdir;
+	grosfs_oper.init        = grosfs_init;
+	grosfs_oper.destroy     = grosfs_destroy;
+	grosfs_oper.access      = grosfs_access;
+	grosfs_oper.create      = grosfs_create;
+	grosfs_oper.lock        = grosfs_lock;
+	grosfs_oper.utimens     = grosfs_utimens;
+	grosfs_oper.bmap        = grosfs_bmap;
+	grosfs_oper.ioctl       = grosfs_ioctl;
+	grosfs_oper.poll        = grosfs_poll;
+
+	grosfs_oper.fgetattr    = grosfs_fgetattr;
+	grosfs_oper.ftruncate   = grosfs_ftruncate;
+	grosfs_oper.flag_nullpath_ok = 0;                /* See below */
 }
