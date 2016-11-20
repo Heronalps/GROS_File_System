@@ -244,14 +244,14 @@ void gros_fsck( Disk * disk ) {
                     } // done scanning all data blocks in inode
                 }
                 else if( gros_is_dir( inode->f_acl ) ) {
-                    Inode    * inode;
-                    DirEntry * direntry = NULL;
+                    Inode    * dir_node;
+                    DirEntry * direntry;
                     int        dir_num  = 0;
 
                     // check first entry refers to own inode num,
                     //  check second entry is valid parent,
                     //  check there exists a path to it in the file system
-                    if( ! gros_readdir_r( disk, inode, direntry, &direntry ) ) {
+                    if( ! gros_readdir_r( disk, inode, NULL, &direntry ) ) {
                         dir_num = direntry->inode_num;
                         gros_readdir_r( disk, inode, direntry, &direntry );
                     }
@@ -265,14 +265,13 @@ void gros_fsck( Disk * disk ) {
 
                         // check for valid inodes in entries, or remove
                         while( ! gros_readdir_r( disk, inode, direntry, &direntry ) ) {
-                            inode = gros_get_inode( disk, direntry->inode_num );
+                            dir_node = gros_get_inode( disk, direntry->inode_num );
                             if( inode->f_links < 1 || direntry->inode_num < 1
                                 || direntry->inode_num >= superblock->fs_num_inodes ) {
-                                if( gros_is_file( inode->f_acl ) )
-                                    gros_unlink( disk,
-                                                 gros_pwd( disk, inode,
-                                                           direntry->filename ) );
-                                else if( gros_is_dir( inode->f_acl ) )
+                                if( gros_is_file( dir_node->f_acl ) )
+                                    gros_unlink( disk, gros_pwd( disk, inode,
+                                                                 direntry->filename ) );
+                                else if( gros_is_dir( dir_node->f_acl ) )
                                     gros_rmdir( disk, gros_pwd( disk, inode,
                                                                 direntry->filename ) );
                             }
@@ -315,11 +314,10 @@ void gros_fsck( Disk * disk ) {
  * @return  const char  *             String path to inode number
  */
 const char * gros_pwd( Disk * disk, Inode * parent_dir, const char * filename ) {
-    char       * rootpath;
     char       * filepath;
     const char * path;
 
-    path     = gros_get_path_to_root( disk, rootpath, parent_dir );
+    path     = gros_get_path_to_root( disk, NULL, parent_dir );
     filepath = ( char * ) calloc( strlen( path ) + strlen( filename ), 1 );
     strncpy( filepath, path, strlen( path ) );
     strncat( filepath, filename, strlen( filename ) );
@@ -341,11 +339,14 @@ const char * gros_pwd( Disk * disk, Inode * parent_dir, const char * filename ) 
  * @return  char  *        Directory name
  */
 const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) {
-    DirEntry * dir_inode = NULL;
+    DirEntry * dir_inode;
     char     * path;
 
+    // check if filepath is NULL
+    ! filepath ? filepath = ( char * ) "\0" : filepath;
+
     // pass over directory entry pointing to self
-    gros_readdir_r( disk, dir, dir_inode, &dir_inode );
+    gros_readdir_r( disk, dir, NULL, &dir_inode );
     // parent directory entry
     gros_readdir_r( disk, dir, dir_inode, &dir_inode );
 

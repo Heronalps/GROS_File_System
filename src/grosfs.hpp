@@ -113,7 +113,7 @@ void gros_fsck( Disk * disk );    // recover the file system
  * @param   char        * filename    The file name to get path for
  * @return  const char  *             String path to inode number
  */
-const char * gros_pwd( Disk * disk, Inode * parent_dir, char * filename );
+const char * gros_pwd( Disk * disk, Inode * parent_dir, const char * filename );
 
 
 /**

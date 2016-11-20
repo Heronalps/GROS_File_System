@@ -43,7 +43,7 @@ void gros_mkroot( Disk * disk ) {
 int gros_namei( Disk * disk, const char * path ) {
     char     * filename;
     Inode    * dir;
-    DirEntry * direntry;
+    DirEntry * direntry = NULL;
 
     // start at root
     dir      = gros_get_inode( disk, 0 );
