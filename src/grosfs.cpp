@@ -1,7 +1,7 @@
 #include "grosfs.hpp"
 #include "files.hpp"
 
-Disk *disk =  gros_open_disk();
+Disk * disk =  gros_open_disk();
 
 
 /**
