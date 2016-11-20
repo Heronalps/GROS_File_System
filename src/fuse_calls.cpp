@@ -6,7 +6,7 @@
 
 // Initialize the filesystem. This function can often be left unimplemented, but it can be a handy way to perform one-time setup such as allocating variable-sized data structures or initializing a new filesystem. The fuse_conn_info structure gives information about what features are supported by FUSE, and can be used to request certain capabilities (see below for more information). The return value of this function is available to all file operations in the private_data field of fuse_context. It is also passed as a parameter to the destroy() method. (Note: see the warning under Other Options below, regarding relative pathnames.)
 void * grosfs_init( struct fuse_conn_info * conn ) {
-    return; // leave unimplemented
+    return NULL; // leave unimplemented
 }
 
 // Called when the filesystem exits. The private_data comes from the return value of init.
@@ -27,15 +27,15 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
 
     inode = gros_get_inode( disk, inode_num );
 
-    usr = inode->acl & 0x7;
-    grp = ( inode->acl >> 3 ) & 0x7;
-    uni = ( inode->acl >> 6 ) & 0x7;
+    usr = inode->f_acl & 0x7;
+    grp = ( inode->f_acl >> 3 ) & 0x7;
+    uni = ( inode->f_acl >> 6 ) & 0x7;
 
     stbuf->st_mode = 0;
     // user
-    stbuf->st_mode = ( uid & 0x4 ) ? stbuf->st_mode | S_IRUSR : stbuf->st_mode;
-    stbuf->st_mode = ( uid & 0x2 ) ? stbuf->st_mode | S_IWUSR : stbuf->st_mode;
-    stbuf->st_mode = ( uid & 0x1 ) ? stbuf->st_mode | S_IXUSR : stbuf->st_mode;
+    stbuf->st_mode = ( usr & 0x4 ) ? stbuf->st_mode | S_IRUSR : stbuf->st_mode;
+    stbuf->st_mode = ( usr & 0x2 ) ? stbuf->st_mode | S_IWUSR : stbuf->st_mode;
+    stbuf->st_mode = ( usr & 0x1 ) ? stbuf->st_mode | S_IXUSR : stbuf->st_mode;
     // group
     stbuf->st_mode = ( grp & 0x4 ) ? stbuf->st_mode | S_IRGRP : stbuf->st_mode;
     stbuf->st_mode = ( grp & 0x2 ) ? stbuf->st_mode | S_IWGRP : stbuf->st_mode;
@@ -96,24 +96,24 @@ int grosfs_access( const char * path, int mask ) {
     if( inode_num < 0 ) return -ENOENT;
 
     inode = gros_get_inode( disk, inode_num );
-    usr = inode->acl & 0x7;
-    grp = ( inode->acl >> 3 ) & 0x7;
-    uni = ( inode->acl >> 6 ) & 0x7;
+    usr = inode->f_acl & 0x7;
+    grp = ( inode->f_acl >> 3 ) & 0x7;
+    uni = ( inode->f_acl >> 6 ) & 0x7;
 
     r_ok = ( uni & 0x4 ) ||
-           ( ( grp & 0x4 ) && ctxt->grp == inode->f_gid ) ||
-           ( ( uid & 0x4 ) && ctxt->uid == inode->f_uid );
+           ( ( grp & 0x4 ) && ctxt->gid == inode->f_gid ) ||
+           ( ( usr & 0x4 ) && ctxt->uid == inode->f_uid );
     w_ok = ( uni & 0x2 ) ||
-           ( ( grp & 0x2 ) && ctxt->grp == inode->f_gid ) ||
-           ( ( uid & 0x2 ) && ctxt->uid == inode->f_uid );
+           ( ( grp & 0x2 ) && ctxt->gid == inode->f_gid ) ||
+           ( ( usr & 0x2 ) && ctxt->uid == inode->f_uid );
     x_ok = ( uni & 0x1 ) ||
-           ( ( grp & 0x1 ) && ctxt->grp == inode->f_gid ) ||
-           ( ( uid & 0x1 ) && ctxt->uid == inode->f_uid );
+           ( ( grp & 0x1 ) && ctxt->gid == inode->f_gid ) ||
+           ( ( usr & 0x1 ) && ctxt->uid == inode->f_uid );
 
-    if( ( mode & R_OK && !r_ok ) ||
-        ( mode & W_OK && !w_ok ) ||
-        ( mode & X_OK && !x_ok ) ) {
-        return -EACCESS;
+    if( ( mask & R_OK && !r_ok ) ||
+        ( mask & W_OK && !w_ok ) ||
+        ( mask & X_OK && !x_ok ) ) {
+        return -EACCES;
     }
 
     return 0;
@@ -180,7 +180,7 @@ int grosfs_symlink( const char * to, const char * from ) {
     dirname[ length ] = '\0';
 
     Inode * from_dir = gros_get_inode(disk, gros_namei( disk, dirname ) );
-    
+
     Inode * inode = gros_new_inode(disk);
 	inode->f_acl = 0x7ff; // 11 111 111 111
 	inode->f_links = 1;
@@ -191,11 +191,11 @@ int grosfs_symlink( const char * to, const char * from ) {
 
     gros_i_write( disk, from_dir, ( char * ) direntry, sizeof( DirEntry ), from_dir->f_size );
     gros_save_inode( disk, inode );
-    gros_i_write( disk, inode, to, sizeof(to), 0);
+    gros_i_write( disk, inode, (char*)to, sizeof(to), 0);
 
     delete direntry;
-    delete dirname;
-	
+    delete [] dirname;
+
     return 0; // do this
 }
 
@@ -233,8 +233,8 @@ int grosfs_ftruncate( const char * path, off_t size ) {
 int grosfs_utimens( const char * path, const struct timespec ts[2] ) {
     int inode_num = gros_namei(disk, path);
     Inode *inode = gros_get_inode(disk, inode_num);
-    inode->f_atime = ts[0];
-    inode->f_mtime = ts[1];
+    inode->f_atime = ts[0].tv_sec * 1000 + ts[0].tv_nsec * 1000000;
+    inode->f_mtime = ts[1].tv_sec * 1000 + ts[1].tv_nsec * 1000000;
     gros_save_inode(disk, inode);
     delete inode;
     return 0;
@@ -254,7 +254,7 @@ int grosfs_open( const char * path, struct fuse_file_info * fi ) {
     }
 
     if( ( inode != NULL && inode->f_links > 0 ) &&
-        fi->flags & ( O_CREATE | O_EXCL ) ) {
+        fi->flags & ( O_CREAT | O_EXCL ) ) {
         return -EEXIST;
     } else if( ( inode == NULL || inode->f_links == 0 ) &&
                !( fi->flags & O_CREAT ) ) {
@@ -372,12 +372,12 @@ int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
     Superblock  * sb = new Superblock();
     int inode_num = gros_namei(disk, path);
     gros_read_block( disk, 0, ( char * ) sb );
-    Inode * inode = gros_get_inode(disk, inode);
+    Inode * inode = gros_get_inode(disk, inode_num);
 
     block_size = sb->fs_block_size;
     n_indirects    = block_size / sizeof( int );
     n_indirects_sq = n_indirects * n_indirects;
-    block_to_read  = blockno;
+    block_to_read  = *blockno;
 
     // by default, the double indirect block we gros_read from is the one given in
     // the inode. this will change if we are in the triple indirect block
@@ -439,7 +439,7 @@ int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
     }
 
     // in a direct block
-    if( cur_block < SINGLE_INDRCT ) {
+    if( *blockno < SINGLE_INDRCT ) {
         block_to_read = inode->f_block[ block_to_read ];
     }
 
