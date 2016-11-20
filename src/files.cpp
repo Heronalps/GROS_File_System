@@ -948,7 +948,7 @@ int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
 
 
 DirEntry * gros_readdir( Disk * disk, Inode * dir ) {
-    DirEntry  * current;
+    DirEntry  * current = NULL;
     DirEntry ** result  = NULL;
 
     if( gros_is_dir( dir->f_acl ) )
