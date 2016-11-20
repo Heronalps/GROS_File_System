@@ -8,12 +8,14 @@
 #include "fuse_calls.hpp"
 #include "../include/catch.hpp"
 
-int main( int argc, char * const argv[] ) {
+int main( int argc, char * argv[] ) {
     // global setup...
     initfuseops();
 
-    int result = Catch::Session() . run( argc, argv );
-    // global clean-up...
-
-    return result;
+    // int result = Catch::Session() . run( argc, argv );
+    // // global clean-up...
+    //
+    // return result;
+    umask(0);
+    return fuse_main(argc, argv, &grosfs_oper, NULL);
 }
