@@ -19,7 +19,7 @@ void gros_mkroot( Disk * disk ) {
     // get the zero-th inode to store the root dir in
     root_i          = gros_new_inode( disk ); // should be inode 0
     // !! root_i->f_inode_num == 0 !!
-    root_i->f_acl   = 0x1ff; // 01 111 111 111
+    root_i->f_acl   = 0x3ff; // 01 111 111 111
     root_i->f_links = 2;
 
     root[ 0 ].inode_num = root_i->f_inode_num;
