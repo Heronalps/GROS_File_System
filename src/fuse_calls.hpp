@@ -58,7 +58,7 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi );
 
 // Return one or more directory entries (struct dirent) to the caller. This is one of the most complex FUSE functions. It is related to, but not identical to, the readdir(2) and getdents(2) system calls, and the readdir(3) library function. Because of its complexity, it is described separately below. Required for essentially any filesystem, since it's what makes ls and a whole bunch of other things work.
 int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
-                  off_t offset, struct fuse_file_info * fi );
+                    off_t offset, struct fuse_file_info * fi );
 
 // Make a special (device) file, FIFO, or socket. See mknod(2) for details. This function is rarely needed, since it's uncommon to make these objects inside special-purpose filesystems.
 int grosfs_mknod( const char * path, mode_t mode, dev_t rdev );
@@ -140,7 +140,7 @@ int grosfs_flush( const char * path, struct fuse_file_info * fi );
 
 // Perform a POSIX file-locking operation. See details below.
 int grosfs_lock( const char * path, struct fuse_file_info * fi, int cmd,
-               struct flock * locks );
+                 struct flock * locks );
 
 // This function is similar to bmap(9). If the filesystem is backed by a block device, it converts blockno from a file-relative block number to a device-relative block. It isn't entirely clear how the blocksize parameter is intended to be used.
 int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno );
@@ -163,7 +163,7 @@ grosfs_ioctl( const char * path, int cmd, void * arg, struct fuse_file_info * fi
 
 // Poll for I/O readiness. If ph is non-NULL, when the filesystem is ready for I/O it should call fuse_notify_poll (possibly asynchronously) with the specified ph; this will clear all pending polls. The callee is responsible for destroying ph with fuse_pollhandle_destroy() when ph is no longer needed.
 int grosfs_poll( const char * path, struct fuse_file_info * fi,
-               struct fuse_pollhandle * ph, unsigned * reventsp );
+                 struct fuse_pollhandle * ph, unsigned * reventsp );
 
 static struct fuse_operations grosfs_oper;
 void initfuseops();

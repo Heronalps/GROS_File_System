@@ -40,6 +40,7 @@ Disk * gros_open_disk() {
     return disk;
 }
 
+
 /**
  * Effectively closes a connection to the disk emulator, deleting
  * memory in disk->mem and deleting the Disk object.
@@ -50,6 +51,7 @@ void gros_close_disk( Disk * disk ) {
     close( disk->fd );
     delete disk;
 }
+
 
 /**
  * Read a block from the disk into a provided buffer.
@@ -73,6 +75,7 @@ int gros_read_block( Disk * disk, int block_num, char * buf ) {
     return 0;
 }
 
+
 /**
  * Write a block from a provided buffer to the disk.
  *
@@ -94,6 +97,7 @@ int gros_write_block( Disk * disk, int block_num, char * buf ) {
 
     return 0;
 }
+
 
 TEST_CASE( "Disk emulator can be accessed properly", "[disk]" ) {
 
