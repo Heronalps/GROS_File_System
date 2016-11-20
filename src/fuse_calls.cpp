@@ -141,7 +141,6 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
     filler(buf, "..", NULL, 0);
 
     // To traverse the path by gros_readdir()
-    // for()
 
     return 0; // do this
 }
@@ -230,12 +229,13 @@ int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi )
 }
 
 // Update the last access time of the given object from ts[0] and the last modification time from ts[1]. Both time specifications are given to nanosecond resolution, but your filesystem doesn't have to be that precise; see utimensat(2) for full details. Note that the time specifications are allowed to have certain special values; however, I don't know if FUSE functions have to support them. This function isn't necessary but is nice to have in a fully functional filesystem.
-int grosfs_utimens( const char * path, const struct timespec ts[2] ) {
-    int inode_num = gros_namei(disk, path);
-    Inode *inode = gros_get_inode(disk, inode_num);
-    inode->f_atime = ts[0].tv_sec * 1000 + ts[0].tv_nsec * 1000000;
-    inode->f_mtime = ts[1].tv_sec * 1000 + ts[1].tv_nsec * 1000000;
-    gros_save_inode(disk, inode);
+int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
+    int inode_num = gros_namei( disk, path );
+    Inode * inode = gros_get_inode( disk, inode_num );
+    inode->f_atime = ts[ 0 ].tv_sec * 1000 + ts[ 0 ].tv_nsec * 1000000;
+    inode->f_mtime = ts[ 1 ].tv_sec * 1000 + ts[ 1 ].tv_nsec * 1000000;
+    gros_save_inode( disk, inode );
+
     delete inode;
     return 0;
 }
@@ -305,16 +305,16 @@ int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
     Superblock  * sb  = new Superblock();
     gros_read_block( disk, 0, ( char * ) sb );
 
-    stbuf->f_bsize = sb->fs_block_size;    /* file system block size */
+    stbuf->f_bsize  = sb->fs_block_size;    /* file system block size */
     stbuf->f_frsize = 0;   /* fragment size */
     stbuf->f_blocks = sb->fs_num_blocks;   /* size of fs in f_frsize units */
-    stbuf->f_bfree = sb->fs_num_blocks - sb->fs_num_used_blocks;    /* # free blocks */
+    stbuf->f_bfree  = sb->fs_num_blocks - sb->fs_num_used_blocks;    /* # free blocks */
     stbuf->f_bavail = sb->fs_num_blocks - sb->fs_num_used_blocks;   /* # free blocks for unprivileged users */
-    stbuf->f_files = sb->fs_num_inodes;    /* # inodes */
-    stbuf->f_ffree = sb->fs_num_inodes - sb->fs_num_used_inodes;    /* # free inodes */
+    stbuf->f_files  = sb->fs_num_inodes;    /* # inodes */
+    stbuf->f_ffree  = sb->fs_num_inodes - sb->fs_num_used_inodes;    /* # free inodes */
     stbuf->f_favail = sb->fs_num_inodes - sb->fs_num_used_inodes;   /* # free inodes for unprivileged users */
-    stbuf->f_fsid = 0;     /* file system ID */
-    stbuf->f_flag = 0;     /* mount flags */
+    stbuf->f_fsid   = 0;     /* file system ID */
+    stbuf->f_flag   = 0;     /* mount flags */
     stbuf->f_namemax = FILENAME_MAX_LENGTH;  /* maximum filename length */
 
     delete sb;
