@@ -90,7 +90,6 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     return 0;
 }
 
-// TODO
 // As getattr, but called when fgetattr(2) is invoked by the user program.
 int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_info *fi ) {
     return grosfs_getattr( path, stbuf );
@@ -146,7 +145,7 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
 
 // Open a directory for reading.
 int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
-    return 0; // what to do here?
+    return 0; // TODO what to do here?
 }
 
 // Return one or more directory entries (struct dirent) to the caller.
@@ -170,27 +169,27 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 // This function is rarely needed, since it's uncommon to make these objects
 // inside special-purpose filesystems.
 int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
-    return 0; // do this
+    return gros_mknod( disk, path );
 }
 
 // Create a directory with the given name. The directory permissions are encoded
 // in mode. See mkdir(2) for details. This function is needed for any reasonable
 // read/write filesystem.
 int grosfs_mkdir( const char * path, mode_t mode ) {
-    return gros_mkdir(disk, path);
+    return gros_mkdir( disk, path );
 }
 
 // Remove (delete) the given file, symbolic link, hard link, or special node.
 // Note that if you support hard links, unlink only deletes the data when the
 // last hard link is removed. See unlink(2) for details.
 int grosfs_unlink( const char * path ) {
-    return gros_unlink(disk, path);
+    return gros_unlink( disk, path );
 }
 
 // Remove the given directory. This should succeed only if the directory is empty
 // (except for "." and ".."). See rmdir(2) for details.
 int grosfs_rmdir( const char * path ) {
-    return gros_rmdir(disk, path);
+    return gros_rmdir( disk, path );
 }
 
 // Create a symbolic link named "from" which, when evaluated, will lead to "to".
@@ -230,7 +229,7 @@ int grosfs_symlink( const char * to, const char * from ) {
 // may be necessary to move the source to an entirely new directory. See rename(2)
 // for full details.
 int grosfs_rename( const char * from, const char * to ) {
-    return gros_frename(disk, from, to);
+    return gros_frename( disk, from, to );
 }
 
 
@@ -239,7 +238,7 @@ int grosfs_rename( const char * from, const char * to ) {
 // If you do implement hard links, be aware that they have an effect on how
 // unlink works. See link(2) for details.
 int grosfs_link( const char * from, const char * to ) {
-    return gros_copy(disk, from, to);
+    return gros_copy( disk, from, to );
 }
 
 
@@ -264,13 +263,13 @@ int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
 // See truncate(2) for details. This call is required for read/write filesystems,
 // because recreating a file will first truncate it.
 int grosfs_truncate( const char * path, off_t size ) {
-    return gros_truncate(disk, path, size);
+    return gros_truncate( disk, path, size );
 }
 
 
 // As truncate, but called when ftruncate(2) is called by the user program.
 int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi ) {
-    return grosfs_truncate(path, size);
+    return grosfs_truncate( path, size );
 }
 
 
@@ -281,10 +280,10 @@ int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi )
 // however, I don't know if FUSE functions have to support them. This function
 // isn't necessary but is nice to have in a fully functional filesystem.
 int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
-    int inode_num = gros_namei( disk, path );
-    Inode * inode = gros_get_inode( disk, inode_num );
-    inode->f_atime = ts[ 0 ].tv_sec * 1000 + ts[ 0 ].tv_nsec * 1000000;
-    inode->f_mtime = ts[ 1 ].tv_sec * 1000 + ts[ 1 ].tv_nsec * 1000000;
+    int      inode_num = gros_namei( disk, path );
+    Inode * inode      = gros_get_inode( disk, inode_num );
+    inode->f_atime     = ts[ 0 ].tv_sec * 1000 + ts[ 0 ].tv_nsec * 1000000;
+    inode->f_mtime     = ts[ 1 ].tv_sec * 1000 + ts[ 1 ].tv_nsec * 1000000;
     gros_save_inode( disk, inode );
 
     delete inode;
@@ -568,9 +567,11 @@ int grosfs_poll( const char * path, struct fuse_file_info * fi,
     return 0; // leave unimplemented
 }
 
-int grosfs_create(char const* path, mode_t mode, struct fuse_file_info* fi) {
+
+int grosfs_create( char const * path, mode_t mode, struct fuse_file_info * fi ) {
     return 0;
 }
+
 
 void initfuseops() {
 	grosfs_oper.getattr     = grosfs_getattr;
