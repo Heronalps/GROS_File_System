@@ -366,9 +366,9 @@ int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
     int          cur_di     = -1;    /* id of blocks last gros_read into diblock */
     int          si         = -1;    /* id of siblock that we need */
     int          di         = -1;    /* id of diblock that we need */
-    int        * siblock;            /* buffer to store indirects */
-    int        * diblock;            /* buffer to store indirects */
-    int        * tiblock;            /* buffer to store indirects */
+    int        * siblock    = NULL;  /* buffer to store indirects */
+    int        * diblock    = NULL;  /* buffer to store indirects */
+    int        * tiblock    = NULL;  /* buffer to store indirects */
     Superblock  * sb = new Superblock();
     int inode_num = gros_namei(disk, path);
     gros_read_block( disk, 0, ( char * ) sb );
