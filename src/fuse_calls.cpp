@@ -79,7 +79,7 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
 }
 
 // As getattr, but called when fgetattr(2) is invoked by the user program.
-int grosfs_fgetattr( const char * path, struct stat * stbuf ) {
+int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_info *fi ) {
     return grosfs_getattr( path, stbuf );
 }
 
@@ -225,7 +225,7 @@ int grosfs_truncate( const char * path, off_t size ) {
 }
 
 // As truncate, but called when ftruncate(2) is called by the user program.
-int grosfs_ftruncate( const char * path, off_t size ) {
+int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi ) {
     return grosfs_truncate(path, size);
 }
 
@@ -293,13 +293,13 @@ int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
 }
 
 // As for read above, except that it can't return 0.
-int grosfs_write( const char * path, char * buf, size_t size, off_t offset,
+int grosfs_write( const char * path, const char * buf, size_t size, off_t offset,
                 struct fuse_file_info * fi ) {
      if (fi->fh != 0) {
          fi->fh = gros_namei(disk, path);
      }
 
-     return gros_i_write(disk, gros_get_inode(disk, fi->fh), buf, size, offset);
+     return gros_i_write(disk, gros_get_inode(disk, fi->fh), (char*)buf, size, offset);
 }
 
 // Return statistics about the filesystem. See statvfs(2) for a description of the structure contents. Usually, you can ignore the path. Not required, but handy for read/write filesystems since this is how programs like df determine the free space.
@@ -481,7 +481,7 @@ int grosfs_poll( const char * path, struct fuse_file_info * fi,
     return 0; // leave unimplemented
 }
 
-int grosfs_create(char const*, unsigned int, fuse_file_info*) {
+int grosfs_create(char const* path, unsigned short mode, struct fuse_file_info* fi) {
     return 0;
 }
 
@@ -500,7 +500,7 @@ void initfuseops() {
 	grosfs_oper.truncate    = grosfs_truncate;
 	grosfs_oper.open        = grosfs_open;
 	grosfs_oper.read        = grosfs_read;
-	// grosfs_oper.write       = grosfs_write;
+	grosfs_oper.write       = grosfs_write;
 	grosfs_oper.statfs      = grosfs_statfs;
 	grosfs_oper.flush       = grosfs_flush;
 	grosfs_oper.release     = grosfs_release;
@@ -517,14 +517,14 @@ void initfuseops() {
 	grosfs_oper.init        = grosfs_init;
 	grosfs_oper.destroy     = grosfs_destroy;
 	grosfs_oper.access      = grosfs_access;
-	// grosfs_oper.create      = grosfs_create;
+	grosfs_oper.create      = grosfs_create;
 	grosfs_oper.lock        = grosfs_lock;
 	grosfs_oper.utimens     = grosfs_utimens;
 	grosfs_oper.bmap        = grosfs_bmap;
 	grosfs_oper.ioctl       = grosfs_ioctl;
 	grosfs_oper.poll        = grosfs_poll;
 
-	// grosfs_oper.fgetattr    = grosfs_fgetattr;
-	// grosfs_oper.ftruncate   = grosfs_ftruncate;
+	grosfs_oper.fgetattr    = grosfs_fgetattr;
+	grosfs_oper.ftruncate   = grosfs_ftruncate;
 	grosfs_oper.flag_nullpath_ok = 0;                /* See below */
 }
