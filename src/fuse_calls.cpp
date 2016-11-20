@@ -6,7 +6,7 @@
 
 // Initialize the filesystem. This function can often be left unimplemented, but it can be a handy way to perform one-time setup such as allocating variable-sized data structures or initializing a new filesystem. The fuse_conn_info structure gives information about what features are supported by FUSE, and can be used to request certain capabilities (see below for more information). The return value of this function is available to all file operations in the private_data field of fuse_context. It is also passed as a parameter to the destroy() method. (Note: see the warning under Other Options below, regarding relative pathnames.)
 void * grosfs_init( struct fuse_conn_info * conn ) {
-    return; // leave unimplemented
+    return NULL; // leave unimplemented
 }
 
 // Called when the filesystem exits. The private_data comes from the return value of init.
@@ -109,7 +109,7 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
 
 // Open a directory for reading.
 int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
-    return 0; // what to do here?
+    return grosfs_open(path, fi); // TODO: what to do here?
 }
 
 // Return one or more directory entries (struct dirent) to the caller. This is one of the most complex FUSE functions. It is related to, but not identical to, the readdir(2) and getdents(2) system calls, and the readdir(3) library function. Because of its complexity, it is described separately below. Required for essentially any filesystem, since it's what makes ls and a whole bunch of other things work.
@@ -120,12 +120,16 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 
 // Make a special (device) file, FIFO, or socket. See mknod(2) for details. This function is rarely needed, since it's uncommon to make these objects inside special-purpose filesystems.
 int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
-    return 0; // do this
+    int inode = gros_mknod(disk, path);
+    // TODO: handle mode
+    return 0;
 }
 
 // Create a directory with the given name. The directory permissions are encoded in mode. See mkdir(2) for details. This function is needed for any reasonable read/write filesystem.
 int grosfs_mkdir( const char * path, mode_t mode ) {
-    return 0; // do this
+    int inode = gros_mkdir(disk, path);
+    // TODO: handle mode
+    return inode;
 }
 
 // Remove (delete) the given file, symbolic link, hard link, or special node. Note that if you support hard links, unlink only deletes the data when the last hard link is removed. See unlink(2) for details.
@@ -135,7 +139,7 @@ int grosfs_unlink( const char * path ) {
 
 // Remove the given directory. This should succeed only if the directory is empty (except for "." and ".."). See rmdir(2) for details.
 int grosfs_rmdir( const char * path ) {
-    return gros_rmdir(disk, path); // do this
+    return gros_rmdir(disk, path);
 }
 
 // Create a symbolic link named "from" which, when evaluated, will lead to "to". Not required if you don't support symbolic links. NOTE: Symbolic-link support requires only readlink and symlink. FUSE itself will take care of tracking symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
@@ -167,7 +171,7 @@ int grosfs_rename( const char * from, const char * to ) {
 
 // Create a hard link between "from" and "to". Hard links aren't required for a working filesystem, and many successful filesystems don't support them. If you do implement hard links, be aware that they have an effect on how unlink works. See link(2) for details.
 int grosfs_link( const char * from, const char * to ) {
-    return 0; // do this
+    return gros_copy(disk, from, to);
 }
 
 // Change the mode (permissions) of the given object to the given new permissions. Only the permissions bits of mode should be examined. See chmod(2) for details.
@@ -182,7 +186,7 @@ int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
 
 // Truncate or extend the given file so that it is precisely size bytes long. See truncate(2) for details. This call is required for read/write filesystems, because recreating a file will first truncate it.
 int grosfs_truncate( const char * path, off_t size ) {
-    return gros_truncate(disk, path, size); // do this
+    return gros_truncate(disk, path, size);
 }
 
 // As truncate, but called when ftruncate(2) is called by the user program.
@@ -192,7 +196,13 @@ int grosfs_ftruncate( const char * path, off_t size ) {
 
 // Update the last access time of the given object from ts[0] and the last modification time from ts[1]. Both time specifications are given to nanosecond resolution, but your filesystem doesn't have to be that precise; see utimensat(2) for full details. Note that the time specifications are allowed to have certain special values; however, I don't know if FUSE functions have to support them. This function isn't necessary but is nice to have in a fully functional filesystem.
 int grosfs_utimens( const char * path, const struct timespec ts[2] ) {
-    return 0; // do this
+    int inode_num = gros_namei(disk, path);
+    Inode *inode = gros_get_inode(disk, inode_num);
+    inode->f_atime = ts[0];
+    inode->f_mtime = ts[1];
+    gros_save_inode(disk, inode);
+    delete inode;
+    return 0;
 }
 
 // Open a file. If you aren't using file handles, this function should just check for existence and permissions and return either success or an error code. If you use file handles, you should also allocate any necessary structures and set fi->fh. In addition, fi has some other fields that an advanced filesystem might find useful; see the structure definition in fuse_common.h for very brief commentary.
@@ -240,18 +250,42 @@ int grosfs_open( const char * path, struct fuse_file_info * fi ) {
 // Read size bytes from the given file into the buffer buf, beginning offset bytes into the file. See read(2) for full details. Returns the number of bytes transferred, or 0 if offset was at or beyond the end of the file. Required for any sensible filesystem.
 int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
                struct fuse_file_info * fi ) {
-    return 0; // do this
+    if (fi->fh != 0) {
+        fi->fh = gros_namei(disk, path);
+    }
+
+    return gros_i_read(disk, gros_get_inode(disk, fi->fh), buf, size, offset);
 }
 
 // As for read above, except that it can't return 0.
 int grosfs_write( const char * path, char * buf, size_t size, off_t offset,
                 struct fuse_file_info * fi ) {
-    return 0; // do this
+     if (fi->fh != 0) {
+         fi->fh = gros_namei(disk, path);
+     }
+
+     return gros_i_write(disk, gros_get_inode(disk, fi->fh), buf, size, offset);
 }
 
 // Return statistics about the filesystem. See statvfs(2) for a description of the structure contents. Usually, you can ignore the path. Not required, but handy for read/write filesystems since this is how programs like df determine the free space.
 int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
-    return 0; // do this
+    Superblock  * sb  = new Superblock();
+    gros_read_block( disk, 0, ( char * ) sb );
+
+    stbuf->f_bsize = sb->fs_block_size;    /* file system block size */
+    stbuf->f_frsize = 0;   /* fragment size */
+    stbuf->f_blocks = sb->fs_num_blocks;   /* size of fs in f_frsize units */
+    stbuf->f_bfree = sb->fs_num_blocks - sb->fs_num_used_blocks;    /* # free blocks */
+    stbuf->f_bavail = sb->fs_num_blocks - sb->fs_num_used_blocks;   /* # free blocks for unprivileged users */
+    stbuf->f_files = sb->fs_num_inodes;    /* # inodes */
+    stbuf->f_ffree = sb->fs_num_inodes - sb->fs_num_used_inodes;    /* # free inodes */
+    stbuf->f_favail = sb->fs_num_inodes - sb->fs_num_used_inodes;   /* # free inodes for unprivileged users */
+    stbuf->f_fsid = 0;     /* file system ID */
+    stbuf->f_flag = 0;     /* mount flags */
+    stbuf->f_namemax = FILENAME_MAX_LENGTH;  /* maximum filename length */
+
+    delete sb;
+    return 0;
 }
 
 // This is the only FUSE function that doesn't have a directly corresponding system call, although close(2) is related. Release is called when FUSE is completely done with a file; at that point, you can free up any temporarily allocated data structures. The IBM document claims that there is exactly one release per open, but I don't know if that is true.
@@ -278,17 +312,108 @@ grosfs_fsyncdir( const char * path, int isdatasync, struct fuse_file_info * fi )
 
 // Called on each close so that the filesystem has a chance to report delayed errors. Important: there may be more than one flush call for each open. Note: There is no guarantee that flush will ever be called at all!
 int grosfs_flush( const char * path, struct fuse_file_info * fi ) {
-    return 0; // what to do here?
+    return 0; // leave unimplemented
 }
 
 // Perform a POSIX file-locking operation. See details below.
 int grosfs_lock( const char * path, struct fuse_file_info * fi, int cmd,
                struct flock * locks ) {
-    return 0; // what to do here?
+    return 0; // leave unimplemented
 }
 
 // This function is similar to bmap(9). If the filesystem is backed by a block device, it converts blockno from a file-relative block number to a device-relative block. It isn't entirely clear how the blocksize parameter is intended to be used.
 int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
+    int          block_size;         /* fs block size */
+    int          n_indirects;        /* how many ints can fit in a block */
+    int          n_indirects_sq;     /* n_indirects * n_indirects */
+    int          block_to_read;      /* current block (relative to fs) to gros_read */
+    int          cur_si     = -1;    /* id of blocks last gros_read into siblock */
+    int          cur_di     = -1;    /* id of blocks last gros_read into diblock */
+    int          si         = -1;    /* id of siblock that we need */
+    int          di         = -1;    /* id of diblock that we need */
+    int        * siblock;            /* buffer to store indirects */
+    int        * diblock;            /* buffer to store indirects */
+    int        * tiblock;            /* buffer to store indirects */
+    Superblock  * sb = new Superblock();
+    int inode_num = gros_namei(disk, path);
+    gros_read_block( disk, 0, ( char * ) sb );
+    Inode * inode = gros_get_inode(disk, inode);
+
+    block_size = sb->fs_block_size;
+    n_indirects    = block_size / sizeof( int );
+    n_indirects_sq = n_indirects * n_indirects;
+    block_to_read  = blockno;
+
+    // by default, the double indirect block we gros_read from is the one given in
+    // the inode. this will change if we are in the triple indirect block
+    di = inode->f_block[ DOUBLE_INDRCT ];
+    // by default, the single indirect block we gros_read from is the one given in
+    // the inode. this will change if we are in the double indirect block
+    si = inode->f_block[ SINGLE_INDRCT ];
+
+    // in a triple indirect block
+    if( block_to_read >= ( n_indirects_sq + SINGLE_INDRCT ) ) {
+        // if we haven't fetched the triple indirect block yet, do so now
+        if( tiblock == NULL ) {
+            tiblock = new int[ n_indirects ];
+            gros_read_block( disk,
+                             inode->f_block[ TRIPLE_INDRCT ],
+                             ( char * ) tiblock );
+        }
+
+        // subtracting n^2+n+12 to obviate lower layers of indirection
+        int pos =
+                ( block_to_read - ( n_indirects_sq
+                                    + n_indirects
+                                    + SINGLE_INDRCT ) )
+                / n_indirects_sq;
+        // get the double indirect block that contains the block we need to gros_read
+        di = tiblock[ pos ];
+        // since we're moving onto double indirect addressing, subtract all
+        // triple indirect related index information
+        block_to_read -= pos * n_indirects_sq; /* still >= n+12 */
+    }
+
+    // in a double indirect block
+    if( block_to_read >= ( n_indirects + SINGLE_INDRCT ) ) {
+        diblock = diblock == NULL ? ( new int[ n_indirects ] ) : diblock;
+        if( cur_di != di ) {
+            cur_di = di;
+            gros_read_block( disk, di, ( char * ) diblock );
+        }
+        // subtracting n+12 to obviate lower layers of indirection
+        int pos = ( block_to_read - ( n_indirects + SINGLE_INDRCT ) ) /
+                  n_indirects;
+        // get the single indirect block that contains the block we need to gros_read
+        si = diblock[ pos ];
+        // since we're moving onto single indirect addressing, subtract all
+        // double indirect related index information
+        block_to_read -= pos * n_indirects; /* still >= 12 */
+    }
+
+    // in a single indirect block
+    if( block_to_read >= SINGLE_INDRCT ) {
+        siblock = siblock == NULL ? ( new int[ n_indirects ] ) : siblock;
+        // if we dont' already have the single indirects loaded into memory, load it
+        if( cur_si != si ) {
+            cur_si = si;
+            gros_read_block( disk, si, ( char * ) siblock );
+        }
+        // relative index into single indirects
+        block_to_read = siblock[ block_to_read - SINGLE_INDRCT ];
+    }
+
+    // in a direct block
+    if( cur_block < SINGLE_INDRCT ) {
+        block_to_read = inode->f_block[ block_to_read ];
+    }
+
+    // free up the resources we allocated
+    if( siblock != NULL ) delete[] siblock;
+    if( diblock != NULL ) delete[] diblock;
+    if( tiblock != NULL ) delete[] tiblock;
+
+    return block_to_read;
 }
 
 #ifdef HAVE_SETXATTR
