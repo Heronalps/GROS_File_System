@@ -6,7 +6,7 @@
 
 // Initialize the filesystem. This function can often be left unimplemented, but it can be a handy way to perform one-time setup such as allocating variable-sized data structures or initializing a new filesystem. The fuse_conn_info structure gives information about what features are supported by FUSE, and can be used to request certain capabilities (see below for more information). The return value of this function is available to all file operations in the private_data field of fuse_context. It is also passed as a parameter to the destroy() method. (Note: see the warning under Other Options below, regarding relative pathnames.)
 void * grosfs_init( struct fuse_conn_info * conn ) {
-    return; // leave unimplemented
+    return NULL; // leave unimplemented
 }
 
 // Called when the filesystem exits. The private_data comes from the return value of init.
@@ -109,7 +109,7 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
 
 // Open a directory for reading.
 int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
-    return 0; // what to do here?
+    return grosfs_open(path, fi); // TODO: what to do here?
 }
 
 // Return one or more directory entries (struct dirent) to the caller. This is one of the most complex FUSE functions. It is related to, but not identical to, the readdir(2) and getdents(2) system calls, and the readdir(3) library function. Because of its complexity, it is described separately below. Required for essentially any filesystem, since it's what makes ls and a whole bunch of other things work.
@@ -120,13 +120,15 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 
 // Make a special (device) file, FIFO, or socket. See mknod(2) for details. This function is rarely needed, since it's uncommon to make these objects inside special-purpose filesystems.
 int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
-    return 0; // do this
+    int inode = gros_mknod(disk, path);
+    // TODO: handle mode
+    return 0;
 }
 
 // Create a directory with the given name. The directory permissions are encoded in mode. See mkdir(2) for details. This function is needed for any reasonable read/write filesystem.
 int grosfs_mkdir( const char * path, mode_t mode ) {
     int inode = gros_mkdir(disk, path);
-
+    // TODO: handle mode
     return inode;
 }
 
