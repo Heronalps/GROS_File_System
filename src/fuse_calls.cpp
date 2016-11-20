@@ -14,10 +14,54 @@ void gros_destroy(void* private_data) {
 
 // Return file attributes. The "stat" structure is described in detail in the stat(2) manual page. For the given pathname, this should fill in the elements of the "stat" structure. If a field is meaningless or semi-meaningless (e.g., st_ino) then it should be set to 0 or given a "reasonable" value. This call is pretty much required for a usable filesystem.
 int gros_getattr(const char* path, struct stat* stbuf) {
+    struct fuse_context *ctxt;
+    int inode_num;
+    short usr, grp, uni;
+    Inode *inode;
+    ctxt = fuse_get_context();
+
+    inode_num = gros_namei(disk, path);
+    if (inode_num < 0) return -ENOENT;
+
+    inode = gros_get_inode(disk, inode_num);
+
+    usr = inode->acl & 0x7;
+    grp = (inode->acl >> 3) & 0x7;
+    uni = (inode->acl >> 6) & 0x7;
+
+    stbuf->st_mode = 0;
+    // user
+    stbuf->st_mode = (uid & 0x4) ? stbuf->st_mode | S_IRUSR : stbuf->st_mode;
+    stbuf->st_mode = (uid & 0x2) ? stbuf->st_mode | S_IWUSR : stbuf->st_mode;
+    stbuf->st_mode = (uid & 0x1) ? stbuf->st_mode | S_IXUSR : stbuf->st_mode;
+    // group
+    stbuf->st_mode = (grp & 0x4) ? stbuf->st_mode | S_IRGRP : stbuf->st_mode;
+    stbuf->st_mode = (grp & 0x2) ? stbuf->st_mode | S_IWGRP : stbuf->st_mode;
+    stbuf->st_mode = (grp & 0x1) ? stbuf->st_mode | S_IXGRP : stbuf->st_mode;
+    // universe
+    stbuf->st_mode = (uni & 0x4) ? stbuf->st_mode | S_IROTH : stbuf->st_mode;
+    stbuf->st_mode = (uni & 0x2) ? stbuf->st_mode | S_IWOTH : stbuf->st_mode;
+    stbuf->st_mode = (uni & 0x1) ? stbuf->st_mode | S_IXOTH : stbuf->st_mode;
+
+    stbuf->st_dev = 0; // not used
+    stbuf->st_rdev = 0; // not used;
+    stbuf->st_ino = inode_num;
+    stbuf->st_uid = inode->f_uid;
+    stbuf->st_gid = inode->f_gid;
+    stbuf->st_atimespec = inode->f_atime;
+    stbuf->st_mtimespec = inode->f_mtime;
+    stbuf->st_ctimespec = inode->f_ctime;
+    stbuf->st_nlink = inode->f_links;
+    stbuf->st_size = inode->f_size;
+    stbuf->st_blocks = (inode->f_size / BLOCK_SIZE) + 1;
+    stbuf->st_blksize = BLOCK_SIZE;
+
+    return 0;
 }
 
 // As getattr, but called when fgetattr(2) is invoked by the user program.
 int gros_fgetattr(const char* path, struct stat* stbuf) {
+    return gros_getattr(path, stbuf);
 }
 
 // This is the same as the access(2) system call. It returns -ENOENT if the path doesn't exist, -EACCESS if the requested permission isn't available, or 0 for success. Note that it can be called on files, directories, or any other object that appears in the filesystem. This call is not required but is highly recommended.
