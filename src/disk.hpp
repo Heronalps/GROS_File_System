@@ -25,7 +25,7 @@ typedef struct _disk {
  *  Disk size will be EMULATOR_SIZE defined in "grosfs.h"
  *  Disk *mem will be a char array of EMULATOR_SIZE items
  */
-Disk * open_disk();
+Disk * gros_open_disk();
 
 /**
  * Effectively closes a connection to the disk emulator, deleting
@@ -33,7 +33,7 @@ Disk * open_disk();
  *
  * @param Disk *disk    The pointer to the disk to close
  */
-void close_disk( Disk * disk );
+void gros_close_disk( Disk * disk );
 
 /**
  * Read a block from the disk into a provided buffer.
@@ -43,7 +43,7 @@ void close_disk( Disk * disk );
  * @param char *buf       Pointer to the destination for the read data
  *                        * Must be allocated to be size BLOCK_SIZE
  */
-int read_block( Disk * disk, int block_num, char * buf );
+int gros_read_block( Disk * disk, int block_num, char * buf );
 
 /**
  * Write a block from a provided buffer to the disk.
@@ -53,7 +53,7 @@ int read_block( Disk * disk, int block_num, char * buf );
  * @param char *buf       Pointer to the data to write
  *                        * Must be allocated to be size BLOCK_SIZE
  */
-int write_block( Disk * disk, int block_num, char * buf );
+int gros_write_block( Disk * disk, int block_num, char * buf );
 
 
 
