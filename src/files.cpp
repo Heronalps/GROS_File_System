@@ -624,8 +624,40 @@ int mkdir( Disk * disk, const char * path ) {
 * @param Inode *  inode    Inode of directory containing directory to delete
 * @param char  *  dirname  Name of directory to delete
 */
-int i_rmdir( Disk * disk, Inode * inode, const char * dirname ) {
-    // TODO STUB
+int i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode ) {
+    int i;
+    DirEntry *result;
+    int found = 0;
+    Inode * child_inode;
+    
+    readdir_r( disk, dir_inode, NULL, &result);
+    readdir_r( disk, dir_inode, result, &result);
+    readdir_r( disk, dir_inode, result, &result);
+    while (result) {
+    	if (is_file(get_inode(disk,result -> inode_num) -> f_acl)) {
+    		i_unlink( disk, dir_inode, result -> filename );
+    	} else {
+    		child_inode = get_inode(disk, result -> inode_num);
+    		i_rmdir( disk, dir_inode, child_inode);
+    	}
+    	readdir_r( disk, dir_inode, result, &result);
+    }
+    
+    char buf[ sizeof(DirEntry) ];
+    int direntry_counter = 0;
+    
+    readdir_r( disk, inode, NULL, &result);
+    while (result && !found) {
+    	if (result -> inode_num == dir_inode -> f_inode_num) {
+    		i_read( disk, inode, buf, sizeof(DirEntry), inode -> f_size - sizeof(DirEntry) );
+    		i_write( disk, inode, buf, sizeof(DirEntry), direntry_counter * sizeof(DirEntry) );
+    		found = 1;
+    	}
+    	direntry_counter++;
+    	readdir_r( disk, inode, result, &result);
+    }
+    i_truncate( disk, inode, inode -> f_size - sizeof(DirEntry) );
+    free_inode( disk, dir_inode );
     return 0;
 }
 
@@ -634,7 +666,14 @@ int i_rmdir( Disk * disk, Inode * inode, const char * dirname ) {
 //   TODO ** what if not path with a '/' ? **
 int rmdir( Disk * disk, const char * path ) {
     const char * dirname = strrchr( path, '/' ) + 1;
-    return i_rmdir( disk, get_inode( disk, namei( disk, path ) ), dirname );
+    int length = strlen(path) - strlen(dirname);
+    char       * new_path = new char[ length ];
+    
+    strncpy(new_path, path, length);
+    new_path[ length ] = '\0';
+    int inode_num = namei( disk, new_path );
+    delete[] new_path;
+    return i_rmdir( disk, get_inode( disk, inode_num ), get_inode( disk, namei( disk, path ) ) );
 }
 
 
@@ -646,7 +685,30 @@ int rmdir( Disk * disk, const char * path ) {
 * @param char  *  filename   Name of file to delete
 */
 int i_unlink( Disk * disk, Inode * inode, const char * filename ) {
-    // TODO STUB
+    //get inode, decrement links, if directory call rmdir, replace direntry with last direntry
+    
+	char buf[ sizeof(DirEntry) ]; 
+	Inode * child_inode;
+	int direntry_counter = 0;
+	int found = 0;
+
+    DirEntry *result;
+    readdir_r( disk, inode, NULL, &result);
+    while (result && !found) {
+    	if (strcmp(result -> filename, filename) == 0) {
+    		child_inode = get_inode(disk, result -> inode_num);
+    		child_inode -> f_links--;
+    		if (child_inode -> f_links == 0) {
+    			free_inode( disk, child_inode);
+    		}
+    		i_read( disk, inode, buf, sizeof(DirEntry), inode -> f_size - sizeof(DirEntry) );
+    		i_write( disk, inode, buf, sizeof(DirEntry), direntry_counter * sizeof(DirEntry) );
+    		found = 1;
+    	}
+    	direntry_counter++;
+    	readdir_r( disk, inode, result, &result);
+    }
+    i_truncate( disk, inode, inode -> f_size - sizeof(DirEntry) );
     return 0;
 }
 
@@ -654,7 +716,12 @@ int i_unlink( Disk * disk, Inode * inode, const char * filename ) {
 // TODO check for correct filename
 int unlink( Disk * disk, const char * path ) {
     const char * filename = strrchr( path, '/' ) + 1;
-    return i_unlink( disk, get_inode( disk, namei( disk, path ) ), filename );
+    int length = strlen(path) - strlen(filename);
+    char       * new_path = new char[ length ];
+    
+    strncpy(new_path, path, length);
+    new_path[ length ] = '\0';
+    return i_unlink( disk, get_inode( disk, namei( disk, new_path ) ), filename );
 }
 
 
@@ -706,4 +773,7 @@ DirEntry * readdir( Disk * disk, Inode * dir ) {
         // TODO STUB
     }
     return NULL;
+}
+int readdir_r( Disk * disk, Inode * dir, DirEntry *current, DirEntry **result) {
+	return 0;
 }

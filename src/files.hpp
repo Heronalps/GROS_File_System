@@ -109,9 +109,9 @@ int mkdir( Disk * disk, const char * path );
 *
 * @param Disk  *  disk     Disk containing the file system
 * @param Inode *  inode    Inode of directory containing directory to delete
-* @param char  *  dirname  Name of directory to delete
+* @param char*  path       FULL path (from root "/") to directory the remove 
 */
-int i_rmdir( Disk * disk, Inode * inode, const char * dirname );
+int i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode );
 
 
 /* @param char*  path     FULL path (from root "/") to directory the remove */
