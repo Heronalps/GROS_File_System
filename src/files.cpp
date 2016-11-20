@@ -52,7 +52,7 @@ int gros_namei( Disk * disk, const char * path ) {
     filename = strtok( filename, "/" );
 
     // travese directory for filename in path
-    while( ( direntry = gros_readdir( disk, dir ) ) && filename ) {
+    while( ! gros_readdir_r( disk, dir, direntry, &direntry ) && filename ) {
         if( ! strcmp( direntry -> filename, filename ) ) {
             dir      = gros_get_inode( disk, direntry->inode_num );
             filename = strtok( NULL, "/" );
@@ -761,21 +761,21 @@ int gros_unlink( Disk * disk, const char * path ) {
 */
 int gros_i_rename( Disk * disk, Inode * dir,
                    const char * oldname, const char * newname ) {
-    DirEntry * direntry;
-    int        status = 1;
-    int        offset = 0;
+    DirEntry * direntry = NULL;
+    int        status   = -1;
+    int        offset   = 0;
+    int        size     = sizeof( DirEntry );
 
-    while( ( direntry = gros_readdir( disk, dir ) ) && status ) {
+    while( ! gros_readdir_r( disk, dir, direntry, &direntry ) && status ) {
         if( ! strcmp( direntry->filename, oldname ) ) {
             memset( direntry->filename, 0, FILENAME_MAX_LENGTH );
             strncpy( direntry->filename, newname, strlen( newname ) );
-            gros_i_write( disk, dir, ( char * ) direntry, sizeof( DirEntry ),
+            gros_i_write( disk, dir, ( char * ) direntry, size,
                           offset );
             status = 0;
         }
-        offset += sizeof( DirEntry );
+        offset += size;
     }
-
     return status;
 }
 
@@ -997,6 +997,12 @@ int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
     int         status       = 1;
     int         offset       = 0;
 
+    if( ! current ) {
+        gros_i_read( disk, dir, data, direntrysize, offset );
+        * result = ( DirEntry * ) data;
+        status = 0;
+    }
+
     // read DirEntries until current entry is found
     while( status && gros_i_read( disk, dir, data, direntrysize, offset ) ) {
         offset += direntrysize;
@@ -1007,19 +1013,17 @@ int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
             else * result = NULL;
         }
     }
-
     return status;
 }
 
 
 DirEntry * gros_readdir( Disk * disk, Inode * dir ) {
-    DirEntry  * current = NULL;
-    DirEntry ** result  = NULL;
+    DirEntry * result = NULL;
 
     if( gros_is_dir( dir->f_acl ) )
-        gros_readdir_r( disk, dir, current, result );
+        gros_readdir_r( disk, dir, result, &result );
 
-    return * result;
+    return result;
 }
 int readdir_r( Disk * disk, Inode * dir, DirEntry *current, DirEntry **result) {
 	return 0;

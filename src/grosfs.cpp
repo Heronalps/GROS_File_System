@@ -119,7 +119,6 @@ void gros_fsck( Disk * disk ) {
     char         sbuf[ BLOCK_SIZE ];
     char         dbuf[ BLOCK_SIZE ];
     char         tbuf[ BLOCK_SIZE ];
-    const char * pwd;
     int          size;
     int          valid;
     int          links;
@@ -245,29 +244,37 @@ void gros_fsck( Disk * disk ) {
                     } // done scanning all data blocks in inode
                 }
                 else if( gros_is_dir( inode->f_acl ) ) {
-                    DirEntry * direntry;
+                    Inode    * inode;
+                    DirEntry * direntry = NULL;
+                    int        dir_num  = 0;
 
                     // check first entry refers to own inode num,
                     //  check second entry is valid parent,
                     //  check there exists a path to it in the file system
-                    if( gros_readdir( disk, inode )->inode_num == inode->f_inode_num
+                    if( ! gros_readdir_r( disk, inode, direntry, &direntry ) ) {
+                        dir_num = direntry->inode_num;
+                        gros_readdir_r( disk, inode, direntry, &direntry );
+                    }
+                    if( dir_num == inode->f_inode_num
                         && gros_check_parent( disk,
-                                              gros_readdir( disk, inode )->inode_num,
+                                              direntry->inode_num,
                                               inode->f_inode_num )
-                        && gros_count_links( disk, inode, inode->f_inode_num,
-                                             0 )
-                           > 0
+                        && gros_count_links( disk, inode, inode->f_inode_num, 0 )
+                           > 1
                         && inode->f_size > 0 ) {
 
                         // check for valid inodes in entries, or remove
-                        while( ( direntry = gros_readdir( disk, inode ) ) ) {
-                            if( direntry->inode_num < 1
-                                && direntry->inode_num
-                                   >= superblock->fs_num_inodes
-                                && gros_get_inode(
-                                    disk, direntry->inode_num )->f_links < 1 ) {
-                                gros_unlink( disk, gros_pwd( disk, inode,
-                                                             direntry->filename ) );
+                        while( ! gros_readdir_r( disk, inode, direntry, &direntry ) ) {
+                            inode = gros_get_inode( disk, direntry->inode_num );
+                            if( inode->f_links < 1 || direntry->inode_num < 1
+                                || direntry->inode_num >= superblock->fs_num_inodes ) {
+                                if( gros_is_file( inode->f_acl ) )
+                                    gros_unlink( disk,
+                                                 gros_pwd( disk, inode,
+                                                           direntry->filename ) );
+                                else if( gros_is_dir( inode->f_acl ) )
+                                    gros_rmdir( disk, gros_pwd( disk, inode,
+                                                                direntry->filename ) );
                             }
                             else size += sizeof( DirEntry );
                         }
@@ -334,13 +341,13 @@ const char * gros_pwd( Disk * disk, Inode * parent_dir, const char * filename ) 
  * @return  char  *        Directory name
  */
 const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) {
-    DirEntry * dir_inode;
+    DirEntry * dir_inode = NULL;
     char     * path;
 
     // pass over directory entry pointing to self
-    gros_readdir( disk, dir );
+    gros_readdir_r( disk, dir, dir_inode, &dir_inode );
     // parent directory entry
-    dir_inode = gros_readdir( disk, dir );
+    gros_readdir_r( disk, dir, dir_inode, &dir_inode );
 
     // allocate char array big enough for paths + slash + null terminator
     path = ( char * ) calloc( strlen( filepath )
@@ -365,7 +372,7 @@ const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) 
 
 // TODO test function
 /**
- * Checks for inode number in parent
+ * Checks for inode number in parent directory entries
  *
  * @param   Disk *  disk           The disk containing the file system
  * @param   int     parent_num     The parent inode number to look through
@@ -373,14 +380,14 @@ const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) 
  * @return  int                    1 confirmed parent, 0 failure
  */
 int gros_check_parent( Disk * disk, int parent_num, int inode_num ) {
-    int     dir_num;
-    int     is_parent = 0;
-    Inode * parent    = gros_get_inode( disk, parent_num );
+    int        is_parent = 0;
+    Inode    * parent    = gros_get_inode( disk, parent_num );
+    DirEntry * direntry  = NULL;
 
     if( gros_is_dir( parent->f_acl ) ) {
-        while( ( dir_num = gros_readdir( disk, parent )->inode_num )
+        while( ! gros_readdir_r( disk, parent, direntry, &direntry )
                && ! is_parent )
-            is_parent = ( dir_num == inode_num );
+            is_parent = ( direntry->inode_num == inode_num );
     }
     return is_parent;
 }
@@ -396,15 +403,16 @@ int gros_check_parent( Disk * disk, int parent_num, int inode_num ) {
  * @param  int     links          The current number of links
  */
 int gros_count_links( Disk * disk, Inode * dir, int inode_num, int links ) {
-    int     dir_inode_num;
-    Inode * inode;
+    int        dir_inode_num;
+    Inode    * inode;
+    DirEntry * direntry = NULL;
 
-    while( ( dir_inode_num = gros_readdir( disk, dir )->inode_num ) ) {
+    while( ! gros_readdir_r( disk, dir, direntry, &direntry ) ) {
         // increment links if inode number found
-        links += ( dir_inode_num == inode_num );
+        links += ( direntry->inode_num == inode_num );
 
         // continue traversal, increment links if directory is found
-        inode = gros_get_inode( disk, dir_inode_num );
+        inode = gros_get_inode( disk, direntry->inode_num );
         if( gros_is_dir( inode->f_acl ) )
             gros_count_links( disk, inode, inode_num, links );
     }
