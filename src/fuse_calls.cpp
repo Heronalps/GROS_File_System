@@ -124,7 +124,7 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
     filler(buf, "..", NULL, 0);
 
     // To traverse the path by gros_readdir()
-    for()
+    // for()
 
     return 0; // do this
 }
