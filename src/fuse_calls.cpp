@@ -242,12 +242,10 @@ int grosfs_utimens( const char * path, const struct timespec ts[2] ) {
 
 // Open a file. If you aren't using file handles, this function should just check for existence and permissions and return either success or an error code. If you use file handles, you should also allocate any necessary structures and set fi->fh. In addition, fi has some other fields that an advanced filesystem might find useful; see the structure definition in fuse_common.h for very brief commentary.
 int grosfs_open( const char * path, struct fuse_file_info * fi ) {
-    struct fuse_context * ctxt;
     int                   inode_num;
     int                   mode = 0;
     Inode               * inode = NULL;
 
-    ctxt      = fuse_get_context();
     inode_num = gros_namei( disk, path );
     if( inode_num > 0 ) {
         inode = gros_get_inode( disk, inode_num );
@@ -481,7 +479,7 @@ int grosfs_poll( const char * path, struct fuse_file_info * fi,
     return 0; // leave unimplemented
 }
 
-int grosfs_create(char const* path, unsigned short mode, struct fuse_file_info* fi) {
+int grosfs_create(char const* path, mode_t mode, struct fuse_file_info* fi) {
     return 0;
 }
 
