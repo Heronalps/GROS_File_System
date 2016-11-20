@@ -59,9 +59,15 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     c.tv_sec = inode->f_ctime / 1000;
     c.tv_nsec = (inode->f_ctime % 1000) * 1000000;
 
-    stbuf->st_atimespec = a;
-    stbuf->st_mtimespec = m;
-    stbuf->st_ctimespec = c;
+    #if defined(__APPLE__) || defined(__MACH__)
+        stbuf->st_atimespec = a;
+        stbuf->st_mtimespec = m;
+        stbuf->st_ctimespec = c;
+    #else
+        stbuf->st_atime = a;
+        stbuf->st_mtime = m;
+        stbuf->st_ctime = c;
+    #endif
 
     stbuf->st_nlink = inode->f_links;
     stbuf->st_size = inode->f_size;
