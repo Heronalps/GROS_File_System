@@ -177,9 +177,7 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
 // in mode. See mkdir(2) for details. This function is needed for any reasonable
 // read/write filesystem.
 int grosfs_mkdir( const char * path, mode_t mode ) {
-    int inode = gros_mkdir(disk, path);
-
-    return inode;
+    return gros_mkdir(disk, path);
 }
 
 // Remove (delete) the given file, symbolic link, hard link, or special node.
@@ -200,32 +198,32 @@ int grosfs_rmdir( const char * path ) {
 // requires only readlink and symlink. FUSE itself will take care of tracking
 // symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
 int grosfs_symlink( const char * to, const char * from ) {
-	const char * filename = strrchr( from, '/' ) + 1;
-    int length = strlen(from) - strlen(filename);
-    char * dirname = new char[ length ];
+    const char * filename = strrchr( from, '/' ) + 1;
+    int          length   = ( int ) ( strlen( from ) - strlen( filename ) );
+    char       * dirname  = new char[ length ];
 
-    strncpy(dirname, from, length);
-    dirname[ length ] = '\0';
+    strncpy( dirname, from, ( size_t ) length + 1 );
 
-    Inode * from_dir = gros_get_inode(disk, gros_namei( disk, dirname ) );
-
-    Inode * inode = gros_new_inode(disk);
-	inode->f_acl = 0x7ff; // 11 111 111 111
-	inode->f_links = 1;
+    Inode    * from_dir = gros_get_inode( disk, gros_namei( disk, dirname ) );
+    Inode    * inode    = gros_new_inode( disk );
+    inode->f_acl        = 0x7ff; // 11 111 111 111
+    inode->f_links      = 1;
     DirEntry * direntry = new DirEntry();
 
     direntry->inode_num = inode->f_inode_num;
     strcpy( direntry->filename, filename );
 
-    gros_i_write( disk, from_dir, ( char * ) direntry, sizeof( DirEntry ), from_dir->f_size );
+    gros_i_write( disk, from_dir, ( char * ) direntry, sizeof( DirEntry ),
+                  from_dir->f_size );
     gros_save_inode( disk, inode );
-    gros_i_write( disk, inode, (char*)to, sizeof(to), 0);
+    gros_i_write( disk, inode, ( char * ) to, sizeof( to ), 0 );
 
     delete direntry;
-    delete [] dirname;
+    delete dirname;
 
-    return 0; // do this
+    return 0;
 }
+
 
 // Rename the file, directory, or other object "from" to the target "to". Note
 // that the source and target don't have to be in the same directory, so it
@@ -235,6 +233,7 @@ int grosfs_rename( const char * from, const char * to ) {
     return gros_frename(disk, from, to);
 }
 
+
 // Create a hard link between "from" and "to". Hard links aren't required for a
 // working filesystem, and many successful filesystems don't support them.
 // If you do implement hard links, be aware that they have an effect on how
@@ -243,11 +242,13 @@ int grosfs_link( const char * from, const char * to ) {
     return gros_copy(disk, from, to);
 }
 
+
 // Change the mode (permissions) of the given object to the given new permissions.
 // Only the permissions bits of mode should be examined. See chmod(2) for details.
 int grosfs_chmod( const char * path, mode_t mode ) {
     return 0; // leave unimplemented
 }
+
 
 // Change the given object's owner and group to the provided values.
 // See chown(2) for details. NOTE: FUSE doesn't deal particularly well with file
@@ -258,6 +259,7 @@ int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
     return 0; // leave unimplemented
 }
 
+
 // Truncate or extend the given file so that it is precisely size bytes long.
 // See truncate(2) for details. This call is required for read/write filesystems,
 // because recreating a file will first truncate it.
@@ -265,10 +267,12 @@ int grosfs_truncate( const char * path, off_t size ) {
     return gros_truncate(disk, path, size);
 }
 
+
 // As truncate, but called when ftruncate(2) is called by the user program.
 int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi ) {
     return grosfs_truncate(path, size);
 }
+
 
 // Update the last access time of the given object from ts[0] and the last modification
 // time from ts[1]. Both time specifications are given to nanosecond resolution,
@@ -286,6 +290,7 @@ int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
     delete inode;
     return 0;
 }
+
 
 // Open a file. If you aren't using file handles, this function should just check
 // for existence and permissions and return either success or an error code.
@@ -328,6 +333,7 @@ int grosfs_open( const char * path, struct fuse_file_info * fi ) {
     return 0;
 }
 
+
 // Read size bytes from the given file into the buffer buf, beginning offset
 // bytes into the file. See read(2) for full details. Returns the number of
 // bytes transferred, or 0 if offset was at or beyond the end of the file.
@@ -341,6 +347,7 @@ int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
                         ( int ) size, ( int ) offset );
 }
 
+
 // As for read above, except that it can't return 0.
 int grosfs_write( const char * path, const char * buf, size_t size, off_t offset,
                   struct fuse_file_info * fi ) {
@@ -350,6 +357,7 @@ int grosfs_write( const char * path, const char * buf, size_t size, off_t offset
     return gros_i_write( disk, gros_get_inode( disk, ( int ) fi->fh ),
                          ( char * ) buf, ( int ) size, ( int ) offset );
 }
+
 
 // Return statistics about the filesystem. See statvfs(2) for a description of
 // the structure contents. Usually, you can ignore the path. Not required, but handy
@@ -374,6 +382,7 @@ int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
     return 0;
 }
 
+
 // This is the only FUSE function that doesn't have a directly corresponding system call,
 // although close(2) is related. Release is called when FUSE is completely done with a file;
 // at that point, you can free up any temporarily allocated data structures.
@@ -383,10 +392,12 @@ int grosfs_release( const char * path, struct fuse_file_info * fi ) {
     return 0; // leave unimplemented
 }
 
+
 // This is like release, except for directories.
 int grosfs_releasedir( const char * path, struct fuse_file_info * fi ) {
     return 0; // leave unimplemented
 }
+
 
 // Flush any dirty information about the file to disk. If isdatasync is nonzero,
 // only data, not metadata, needs to be flushed. When this call returns,
@@ -399,10 +410,12 @@ int grosfs_fsync( const char * path, int isdatasync, struct fuse_file_info * fi 
     return 0; // leave unimplemented
 }
 
+
 // Like fsync, but for directories.
 int grosfs_fsyncdir( const char * path, int isdatasync, struct fuse_file_info * fi ) {
     return 0; // leave unimplemented
 }
+
 
 // Called on each close so that the filesystem has a chance to report delayed errors.
 // Important: there may be more than one flush call for each open.
@@ -411,11 +424,13 @@ int grosfs_flush( const char * path, struct fuse_file_info * fi ) {
     return 0; // leave unimplemented
 }
 
+
 // Perform a POSIX file-locking operation. See details below.
 int grosfs_lock( const char * path, struct fuse_file_info * fi, int cmd,
                  struct flock * locks ) {
     return 0; // leave unimplemented
 }
+
 
 // This function is similar to bmap(9). If the filesystem is backed by a block device,
 // it converts blockno from a file-relative block number to a device-relative block.
@@ -502,7 +517,7 @@ int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
     }
 
     // in a direct block
-    if( * blockno < SINGLE_INDRCT ) {
+    if( * blockno < SINGLE_INDRCT )
         block_to_read = inode->f_block[ block_to_read ];
 
     // free up the resources we allocated
@@ -512,6 +527,7 @@ int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
 
     return block_to_read;
 }
+
 
 #ifdef HAVE_SETXATTR
 // Set an extended attribute. See setxattr(2). This should be implemented only if HAVE_SETXATTR is true.
@@ -530,6 +546,7 @@ int grosfs_listxattr(const char* path, const char* list, size_t size) {
 }
 #endif
 
+
 // Support the ioctl(2) system call. As such, almost everything is up to the filesystem.
 // On a 64-bit machine, FUSE_IOCTL_COMPAT will be set for 32-bit ioctls.
 // The size and direction of data is determined by _IOC_*() decoding of cmd.
@@ -540,6 +557,7 @@ int grosfs_ioctl( const char * path, int cmd, void * arg,
                   struct fuse_file_info * fi, unsigned int flags, void * data ) {
     return 0; // TODO what to do here?
 }
+
 
 // Poll for I/O readiness. If ph is non-NULL, when the filesystem is ready for I/O
 // it should call fuse_notify_poll (possibly asynchronously) with the specified ph;
