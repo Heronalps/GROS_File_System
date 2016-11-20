@@ -6,16 +6,21 @@
 
 #include "grosfs.hpp"
 #include "fuse_calls.hpp"
+#include <cstdio>
+#include <cstring>
 #include "../include/catch.hpp"
 
 int main( int argc, char * argv[] ) {
-    // global setup...
     initfuseops();
+    int result;
 
-    // int result = Catch::Session() . run( argc, argv );
-    // // global clean-up...
-    //
-    // return result;
-    umask(0);
-    return fuse_main(argc, argv, &grosfs_oper, NULL);
+    const char* env_p = std::getenv("RUN_ENV");
+    if (env_p && strcmp(env_p, "test") == 0) {
+        result = Catch::Session() . run( argc, argv );
+    } else {
+        umask(0);
+        result = fuse_main(argc, argv, &grosfs_oper, NULL);
+    }
+
+    return result;
 }

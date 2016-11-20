@@ -5,6 +5,7 @@ compiler:
 install:
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
   - export C_INCLUDE_PATH=/usr/include/$(gcc -print-multiarch)
+  - export RUN_ENV=test
   - make
 script:
   - make run
