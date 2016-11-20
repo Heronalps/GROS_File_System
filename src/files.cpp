@@ -659,11 +659,11 @@ int gros_i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode ) {
     gros_readdir_r( disk, dir_inode, result, &result);
     gros_readdir_r( disk, dir_inode, result, &result);
     while (result) {
-    	if (gros_is_file(gros_get_inode(disk,result -> inode_num) -> f_acl)) {
-    		gros_i_unlink( disk, dir_inode, result -> filename );
-    	} else {
+    	if (gros_is_dir(gros_get_inode(disk,result -> inode_num) -> f_acl)) {
     		child_inode = gros_get_inode(disk, result -> inode_num);
     		gros_i_rmdir( disk, dir_inode, child_inode);
+    	} else {
+    		gros_i_unlink( disk, dir_inode, result -> filename );
     	}
     	gros_readdir_r( disk, dir_inode, result, &result);
     }
