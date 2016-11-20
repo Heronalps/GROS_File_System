@@ -304,6 +304,8 @@ void gros_fsck( Disk * disk ) {
 }
 
 
+
+
 // TODO test function, possible memory leaks
 /**
  * Finds path from root to inode, backwards

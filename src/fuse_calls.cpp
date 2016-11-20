@@ -112,10 +112,32 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
     return 0; // what to do here?
 }
 
-// Return one or more directory entries (struct dirent) to the caller. This is one of the most complex FUSE functions. It is related to, but not identical to, the readdir(2) and getdents(2) system calls, and the readdir(3) library function. Because of its complexity, it is described separately below. Required for essentially any filesystem, since it's what makes ls and a whole bunch of other things work.
+// Return one or more directory entries (struct dirent) to the caller.
+// This is one of the most complex FUSE functions.
+// It is related to, but not identical to, the readdir(2) and getdents(2) system calls,
+// and the readdir(3) library function. Because of its complexity, it is described separately below.
+// Required for essentially any filesystem, since it's what makes ls and a whole bunch of other things work.
 int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info * fi ) {
+
+
     return 0; // do this
+}
+
+static int ou_readdir(const char* path, void* buf, fuse_fill_dir_t filler,
+                      off_t offset, struct fuse_file_info* fi)
+{
+    struct list_node* n;
+
+    filler(buf, ".", NULL, 0);
+    filler(buf, "..", NULL, 0);
+
+    list_for_each (n, &entries) {
+        struct ou_entry* o = list_entry(n, struct ou_entry, node);
+        filler(buf, o->name, NULL, 0);
+    }
+
+    return 0;
 }
 
 // Make a special (device) file, FIFO, or socket. See mknod(2) for details. This function is rarely needed, since it's uncommon to make these objects inside special-purpose filesystems.
