@@ -124,7 +124,7 @@ const char * gros_pwd( Disk * disk, Inode * parent_dir, char * filename );
  * @param   Inode * dir    The directory to traverse
  * @return  char  *        Directory name
  */
-char * gros_get_path_to_root( Disk * disk, char * path, Inode * dir );
+const char * gros_get_path_to_root( Disk * disk, char * path, Inode * dir );
 
 
 /**

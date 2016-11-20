@@ -34,7 +34,6 @@ void gros_mkroot( Disk * disk ) {
 }
 
 
-// TODO note: linux implementation returns 0 upon success, not exactly sure how it works
 /**
  * Returns the inode number of the file corresponding to the given path
  *
@@ -60,6 +59,8 @@ int gros_namei( Disk * disk, const char * path ) {
         }
     }
     free( filename );
+    if( ! dir -> f_inode_num )
+        return -1;
     return dir -> f_inode_num;
 }
 
@@ -493,7 +494,6 @@ int gros_write( Disk * disk, const char * path, char * buf, int size,
 }
 
 
-// TODO how to find end of file if potentially zero filled ?
 /**
  * Ensures that a file is at least `size` bytes long. If it is already
  *  `size` bytes, nothing happens. Otherwise, the file is allocated
@@ -991,9 +991,9 @@ int gros_truncate( Disk * disk, const char * path, int size ) {
  */
 int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
                     DirEntry ** result ) {
-    char        data[ BLOCK_SIZE ];
-    char        next[ BLOCK_SIZE ];
     int         direntrysize = sizeof( DirEntry );
+    char        data[ direntrysize ];
+    char        next[ direntrysize ];
     int         status       = 1;
     int         offset       = 0;
 

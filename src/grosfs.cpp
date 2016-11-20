@@ -119,6 +119,7 @@ void gros_fsck( Disk * disk ) {
     char         sbuf[ BLOCK_SIZE ];
     char         dbuf[ BLOCK_SIZE ];
     char         tbuf[ BLOCK_SIZE ];
+    const char * pwd;
     int          size;
     int          valid;
     int          links;
@@ -264,9 +265,10 @@ void gros_fsck( Disk * disk ) {
                                 && direntry->inode_num
                                    >= superblock->fs_num_inodes
                                 && gros_get_inode(
-                                    disk, direntry->inode_num )->f_links < 1 )
+                                    disk, direntry->inode_num )->f_links < 1 ) {
                                 gros_unlink( disk, gros_pwd( disk, inode,
                                                              direntry->filename ) );
+                            }
                             else size += sizeof( DirEntry );
                         }
                     }
@@ -296,7 +298,7 @@ void gros_fsck( Disk * disk ) {
 }
 
 
-// TODO test function, probable memory leaks
+// TODO test function, possible memory leaks
 /**
  * Finds path from root to inode, backwards
  *
@@ -305,24 +307,24 @@ void gros_fsck( Disk * disk ) {
  * @param   char        * filename    The file name to get path for
  * @return  const char  *             String path to inode number
  */
-const char * gros_pwd( Disk * disk, Inode * parent_dir, char * filename ) {
-    char * rootpath;
-    char * filepath;
+const char * gros_pwd( Disk * disk, Inode * parent_dir, const char * filename ) {
+    char       * rootpath;
+    char       * filepath;
+    const char * path;
 
-    rootpath = ( char * ) calloc( FILENAME_MAX_LENGTH, sizeof( char ) );
-    rootpath = gros_get_path_to_root( disk, rootpath, parent_dir );
-    filepath = ( char * ) calloc( strlen( rootpath ) + strlen( filename ),
-                                  sizeof( char ) );
-    strncpy( rootpath, filepath, strlen( rootpath ) );
+    path     = gros_get_path_to_root( disk, rootpath, parent_dir );
+    filepath = ( char * ) calloc( strlen( path ) + strlen( filename ), 1 );
+    strncpy( filepath, path, strlen( path ) );
     strncat( filepath, filename, strlen( filename ) );
 
-    free( rootpath );
+    path = filepath;
+    free( filepath );
 
-    return filepath;
+    return path;
 }
 
 
-// TODO test function, probable memory leaks
+// TODO test function, possible memory leaks
 /**
  * Recursively traverse path back to root
  *
@@ -331,7 +333,7 @@ const char * gros_pwd( Disk * disk, Inode * parent_dir, char * filename ) {
  * @param   Inode * dir    The directory to traverse
  * @return  char  *        Directory name
  */
-char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) {
+const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) {
     DirEntry * dir_inode;
     char     * path;
 
@@ -400,7 +402,7 @@ int gros_count_links( Disk * disk, Inode * dir, int inode_num, int links ) {
         // increment links if inode number found
         links += ( dir_inode_num == inode_num );
 
-        // continue traversal if directory is found
+        // continue traversal, increment links if directory is found
         inode = gros_get_inode( disk, dir_inode_num );
         if( gros_is_dir( inode->f_acl ) )
             gros_count_links( disk, inode, inode_num, links );
