@@ -20,7 +20,7 @@ void gros_make_fs( Disk * disk ) {
                                       / superblock->fs_block_size;
     int          num_inode_blocks   = ( int ) ceil( num_blocks * INODE_BLOCKS );
     int          inode_per_block    = ( int ) floor( superblock->fs_block_size
-                                         / superblock->fs_inode_size );
+                                                     / superblock->fs_inode_size );
     superblock->fs_num_blocks       = ( int ) floor( num_blocks * DATA_BLOCKS );
     superblock->fs_num_inodes       = num_inode_blocks * inode_per_block;
     superblock->fs_num_block_groups = ( int ) ceil( superblock->fs_num_blocks
@@ -71,9 +71,9 @@ void gros_make_fs( Disk * disk ) {
 void gros_init_inodes( Disk * disk, int num_inode_blocks, int inodes_per_block ) {
     int     i;
     int     j;
+    int     inode_num;
     int     rel_inode_index;
     char    ibuf[ BLOCK_SIZE ];
-    int     inode_num;
     Inode * tmp;
 
     inode_num    = 0;
@@ -378,7 +378,8 @@ int gros_check_parent( Disk * disk, int parent_num, int inode_num ) {
     Inode * parent    = gros_get_inode( disk, parent_num );
 
     if( gros_is_dir( parent->f_acl ) ) {
-        while( ( dir_num = gros_readdir( disk, parent )->inode_num ) && !is_parent )
+        while( ( dir_num = gros_readdir( disk, parent )->inode_num )
+               && ! is_parent )
             is_parent = ( dir_num == inode_num );
     }
     return is_parent;
