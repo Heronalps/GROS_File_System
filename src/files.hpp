@@ -110,7 +110,7 @@ int gros_mkdir( Disk * disk, const char * path );
 *
 * @param Disk  *  disk     Disk containing the file system
 * @param Inode *  inode    Inode of directory containing directory to delete
-* @param char*  path       FULL path (from root "/") to directory the remove 
+* @param char*  path       FULL path (from root "/") to directory the remove
 */
 int gros_i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode );
 
@@ -139,14 +139,10 @@ int gros_unlink( Disk * disk, const char * path );
 *
 * @param Disk  *  disk       Disk containing the file system
 * @param Inode *  inode      Inode of directory containing file to rename
-* @param char  *  oldname    Name of file to rename
-* @param char  *  oldname    New name for file
+* @param char  *  from       Name of file to rename
+* @param char  *  to         New name for file
 */
-int gros_i_rename( Disk * disk, Inode * inode, const char * oldname,
-                   const char * newname );
-
-/* @param char*  path       FULL path (from root "/") to the file */
-int gros_rename( Disk * disk, const char * path, const char * newname );
+int gros_frename( Disk * disk, const char * from, const char * to );
 
 /**
 * Truncates or extends the file to a specified length
@@ -198,6 +194,20 @@ int gros_i_ensure_size( Disk * disk, Inode * inode, int size );
 
 /* @param char*  path     FULL path (from root "/") to the file */
 int gros_ensure_size( Disk * disk, const char * path, int size );
+
+
+/**
+* Copies a file from one directory to another, incrementing the number of links
+*
+* @param Disk  *  disk     Disk containing the file system
+* @param Inode *  from     Inode corresponding to the file to copy
+* @param Inode *  todir    Inode corresponding to destination directory
+* @param const char * name Desired new name for file
+*/
+int gros_i_copy( Disk * disk, Inode * from, Inode * todir, const char * name );
+
+/* @param char*  to     FULL path (from root "/") to the new copied file */
+int gros_copy( Disk * disk, const char * from, const char * to );
 
 
 

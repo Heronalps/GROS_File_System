@@ -135,6 +135,7 @@ int gros_symlink( const char * to, const char * from ) {
 
 // Rename the file, directory, or other object "from" to the target "to". Note that the source and target don't have to be in the same directory, so it may be necessary to move the source to an entirely new directory. See rename(2) for full details.
 int gros_rename( const char * from, const char * to ) {
+    return gros_frename(disk, from, to);
 }
 
 // Create a hard link between "from" and "to". Hard links aren't required for a working filesystem, and many successful filesystems don't support them. If you do implement hard links, be aware that they have an effect on how unlink works. See link(2) for details.

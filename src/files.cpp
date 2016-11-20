@@ -654,7 +654,7 @@ int gros_i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode ) {
     DirEntry *result;
     int found = 0;
     Inode * child_inode;
-    
+
     gros_readdir_r( disk, dir_inode, NULL, &result);
     gros_readdir_r( disk, dir_inode, result, &result);
     gros_readdir_r( disk, dir_inode, result, &result);
@@ -667,10 +667,10 @@ int gros_i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode ) {
     	}
     	gros_readdir_r( disk, dir_inode, result, &result);
     }
-    
+
     char buf[ sizeof(DirEntry) ];
     int direntry_counter = 0;
-    
+
     gros_readdir_r( disk, inode, NULL, &result);
     while (result && !found) {
     	if (result -> inode_num == dir_inode -> f_inode_num) {
@@ -693,7 +693,7 @@ int gros_rmdir( Disk * disk, const char * path ) {
     const char * dirname = strrchr( path, '/' ) + 1;
     int length = strlen(path) - strlen(dirname);
     char       * new_path = new char[ length ];
-    
+
     strncpy(new_path, path, length);
     new_path[ length ] = '\0';
     int inode_num = gros_namei( disk, new_path );
@@ -710,7 +710,7 @@ int gros_rmdir( Disk * disk, const char * path ) {
 * @param char  *  filename   Name of file to delete
 */
 int gros_i_unlink( Disk * disk, Inode * inode, const char * filename ) {
-    char buf[ sizeof(DirEntry) ]; 
+    char buf[ sizeof(DirEntry) ];
 	Inode * child_inode;
 	int direntry_counter = 0;
 	int found = 0;
@@ -741,7 +741,7 @@ int gros_unlink( Disk * disk, const char * path ) {
     const char * filename = strrchr( path, '/' ) + 1;
     int length = strlen(path) - strlen(filename);
     char       * new_path = new char[ length ];
-    
+
     strncpy(new_path, path, length);
     new_path[ length ] = '\0';
     int inode_num = gros_namei( disk, new_path );
@@ -750,42 +750,10 @@ int gros_unlink( Disk * disk, const char * path ) {
 
 }
 
-
-/**
-* Renames a file or directory
-*
-* @param Disk  *  disk       Disk containing the file system
-* @param Inode *  dir        Inode of directory containing file to rename
-* @param char  *  oldname    Name of file to rename
-* @param char  *  oldname    New name for file
-*/
-int gros_i_rename( Disk * disk, Inode * dir,
-                   const char * oldname, const char * newname ) {
-    DirEntry * direntry = NULL;
-    int        status   = -1;
-    int        offset   = 0;
-    int        size     = sizeof( DirEntry );
-
-    while( ! gros_readdir_r( disk, dir, direntry, &direntry ) && status ) {
-        if( ! strcmp( direntry->filename, oldname ) ) {
-            memset( direntry->filename, 0, FILENAME_MAX_LENGTH );
-            strncpy( direntry->filename, newname, strlen( newname ) );
-            gros_i_write( disk, dir, ( char * ) direntry, size,
-                          offset );
-            status = 0;
-        }
-        offset += size;
-    }
-    return status;
-}
-
-
 // TODO check for correct filename
-int gros_rename( Disk * disk, const char * path, const char * newname ) {
-    const char * oldname = strrchr( path, '/' ) + 1;
-    return gros_i_rename( disk,
-                          gros_get_inode( disk, gros_namei( disk, path ) ),
-                          oldname, newname );
+int gros_frename( Disk * disk, const char * from, const char * to ) {
+    gros_copy(disk, from, to);
+    return gros_unlink(disk, from);
 }
 
 
@@ -1027,4 +995,49 @@ DirEntry * gros_readdir( Disk * disk, Inode * dir ) {
 }
 int readdir_r( Disk * disk, Inode * dir, DirEntry *current, DirEntry **result) {
 	return 0;
+}
+
+
+
+/**
+* Copies a file from one directory to another, incrementing the number of links
+*
+* @param Disk  *  disk     Disk containing the file system
+* @param Inode *  from     Inode corresponding to the file to copy
+* @param Inode *  todir    Inode corresponding to destination directory
+* @param const char * name Desired new name for file
+*/
+int gros_i_copy( Disk * disk, Inode * from, Inode * todir, const char * filename ) {
+    DirEntry * direntry = new DirEntry();
+
+    direntry->inode_num = from->f_inode_num;
+    strcpy( direntry->filename, filename );
+
+    gros_i_write(disk, todir, (char*) direntry, sizeof( DirEntry ), todir->f_size);
+
+    from->f_links += 1;
+    gros_save_inode( disk, from );
+
+    delete direntry;
+    return from->f_inode_num;
+}
+
+/* @param char*  to     FULL path (from root "/") to the new copied file */
+int gros_copy( Disk * disk, const char * from, const char * to ) {
+    const char * filename = strrchr( from, '/' ) + 1;
+    int length = strlen(from) - strlen(filename);
+    char       * dirname = new char[ length ];
+
+    strncpy(dirname, from, length);
+    dirname[ length ] = '\0';
+
+    int from_inode_num = gros_namei(disk, from);
+    int to_dir = gros_namei( disk, dirname );
+    delete [] dirname;
+    return gros_i_copy(
+        disk,
+        gros_get_inode(disk, from_inode_num),
+        gros_get_inode(disk, to_dir),
+        filename
+    );
 }
