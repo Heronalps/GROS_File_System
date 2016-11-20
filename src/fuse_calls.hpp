@@ -27,6 +27,10 @@
 #include <errno.h>
 #include <sys/time.h>
 
+#include "grosfs.hpp"
+#include "disk.hpp"
+#include "files.hpp"
+
 #ifdef HAVE_SETXATTR
 #include <sys/xattr.h>
 #endif
@@ -41,10 +45,10 @@ void grosfs_destroy( void * private_data );
 int grosfs_getattr( const char * path, struct stat * stbuf );
 
 // As getattr, but called when fgetattr(2) is invoked by the user program.
-int grosfs_fgetattr( const char * path, struct stat * stbuf );
+int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_info *fi );
 
 // This is the same as the access(2) system call. It returns -ENOENT if the path doesn't exist, -EACCESS if the requested permission isn't available, or 0 for success. Note that it can be called on files, directories, or any other object that appears in the filesystem. This call is not required but is highly recommended.
-int grosfs_access( const char * path, mask );
+int grosfs_access( const char * path, int mask );
 
 // If path is a symbolic link, fill buf with its target, up to size. See readlink(2) for how to handle a too-small buffer and for error codes. Not required if you don't support symbolic links. NOTE: Symbolic-link support requires only readlink and symlink. FUSE itself will take care of tracking symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
 int grosfs_readlink( const char * path, char * buf, size_t size );
@@ -87,10 +91,22 @@ int grosfs_chown( const char * path, uid_t uid, gid_t gid );
 int grosfs_truncate( const char * path, off_t size );
 
 // As truncate, but called when ftruncate(2) is called by the user program.
-int grosfs_ftruncate( const char * path, off_t size );
+int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info * fi );
 
 // Update the last access time of the given object from ts[0] and the last modification time from ts[1]. Both time specifications are given to nanosecond resolution, but your filesystem doesn't have to be that precise; see utimensat(2) for full details. Note that the time specifications are allowed to have certain special values; however, I don't know if FUSE functions have to support them. This function isn't necessary but is nice to have in a fully functional filesystem.
 int grosfs_utimens( const char * path, const struct timespec ts[2] );
+
+/**
+ * Create and open a file
+ *
+ * If the file does not exist, first create it with the specified
+ * mode, and then open it.
+ *
+ * If this method is not implemented or under Linux kernel
+ * versions earlier than 2.6.15, the mknod() and open() methods
+ * will be called instead.
+ */
+int grosfs_create( const char * path, mode_t mode, struct fuse_file_info * fi );
 
 // Open a file. If you aren't using file handles, this function should just check for existence and permissions and return either success or an error code. If you use file handles, you should also allocate any necessary structures and set fi->fh. In addition, fi has some other fields that an advanced filesystem might find useful; see the structure definition in fuse_common.h for very brief commentary.
 int grosfs_open( const char * path, struct fuse_file_info * fi );
@@ -100,7 +116,7 @@ int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
                struct fuse_file_info * fi );
 
 // As for read above, except that it can't return 0.
-int grosfs_write( const char * path, char * buf, size_t size, off_t offset,
+int grosfs_write( const char * path, const char * buf, size_t size, off_t offset,
                 struct fuse_file_info * fi );
 
 // Return statistics about the filesystem. See statvfs(2) for a description of the structure contents. Usually, you can ignore the path. Not required, but handy for read/write filesystems since this is how programs like df determine the free space.
@@ -149,47 +165,92 @@ grosfs_ioctl( const char * path, int cmd, void * arg, struct fuse_file_info * fi
 int grosfs_poll( const char * path, struct fuse_file_info * fi,
                struct fuse_pollhandle * ph, unsigned * reventsp );
 
-static struct fuse_operations grosfs_oper = {
-        .init        = grosfs_init,
-        .destroy     = grosfs_destroy,
-        .getattr     = grosfs_getattr,
-        .fgetattr    = grosfs_fgetattr,
-        .access      = grosfs_access,
-        .readlink    = grosfs_readlink,
-        .readdir     = grosfs_readdir,
-        .mknod       = grosfs_mknod,
-        .mkdir       = grosfs_mkdir,
-        .symlink     = grosfs_symlink,
-        .unlink      = grosfs_unlink,
-        .rmdir       = grosfs_rmdir,
-        .rename      = grosfs_rename,
-        .link        = grosfs_link,
-        .chmod       = grosfs_chmod,
-        .chown       = grosfs_chown,
-        .truncate    = grosfs_truncate,
-        .ftruncate   = grosfs_ftruncate,
-        .utimens     = grosfs_utimens,
-        .create      = grosfs_create,
-        .open        = grosfs_open,
-        .read        = grosfs_read,
-        .write       = grosfs_write,
-        .statfs      = grosfs_statfs,
-        .release     = grosfs_release,
-        .opendir     = grosfs_opendir,
-        .releasedir  = grosfs_releasedir,
-        .fsync       = grosfs_fsync,
-        .flush       = grosfs_flush,
-        .fsyncdir    = grosfs_fsyncdir,
-        .lock        = grosfs_lock,
-        .bmap        = grosfs_bmap,
-        .ioctl       = grosfs_ioctl,
-        .poll        = grosfs_poll,
-#ifdef HAVE_SETXATTR
-.setxattr    = grosfs_setxattr,
-.getxattr    = grosfs_getxattr,
-.listxattr   = grosfs_listxattr,
+#if defined(__APPLE__) || defined(__MACH__)
+    static struct fuse_operations grosfs_oper = {
+            .init        = grosfs_init,
+            .destroy     = grosfs_destroy,
+            .getattr     = grosfs_getattr,
+            .fgetattr    = grosfs_fgetattr,
+            .access      = grosfs_access,
+            .readlink    = grosfs_readlink,
+            .readdir     = grosfs_readdir,
+            .mknod       = grosfs_mknod,
+            .mkdir       = grosfs_mkdir,
+            .symlink     = grosfs_symlink,
+            .unlink      = grosfs_unlink,
+            .rmdir       = grosfs_rmdir,
+            .rename      = grosfs_rename,
+            .link        = grosfs_link,
+            .chmod       = grosfs_chmod,
+            .chown       = grosfs_chown,
+            .truncate    = grosfs_truncate,
+            .ftruncate   = grosfs_ftruncate,
+            .utimens     = grosfs_utimens,
+            .create      = grosfs_create,
+            .open        = grosfs_open,
+            .read        = grosfs_read,
+            .write       = grosfs_write,
+            .statfs      = grosfs_statfs,
+            .release     = grosfs_release,
+            .opendir     = grosfs_opendir,
+            .releasedir  = grosfs_releasedir,
+            .fsync       = grosfs_fsync,
+            .flush       = grosfs_flush,
+            .fsyncdir    = grosfs_fsyncdir,
+            .lock        = grosfs_lock,
+            .bmap        = grosfs_bmap,
+            .ioctl       = grosfs_ioctl,
+            .poll        = grosfs_poll,
+            #ifdef HAVE_SETXATTR
+            .setxattr    = grosfs_setxattr,
+            .getxattr    = grosfs_getxattr,
+            .listxattr   = grosfs_listxattr,
+            #endif
+            .flag_nullpath_ok = 0,                /* See below */
+    };
+#else
+    static struct fuse_operations grosfs_oper = {
+            init        = grosfs_init,
+            destroy     = grosfs_destroy,
+            getattr     = grosfs_getattr,
+            fgetattr    = grosfs_fgetattr,
+            access      = grosfs_access,
+            readlink    = grosfs_readlink,
+            readdir     = grosfs_readdir,
+            mknod       = grosfs_mknod,
+            mkdir       = grosfs_mkdir,
+            symlink     = grosfs_symlink,
+            unlink      = grosfs_unlink,
+            rmdir       = grosfs_rmdir,
+            rename      = grosfs_rename,
+            link        = grosfs_link,
+            chmod       = grosfs_chmod,
+            chown       = grosfs_chown,
+            truncate    = grosfs_truncate,
+            ftruncate   = grosfs_ftruncate,
+            utimens     = grosfs_utimens,
+            create      = grosfs_create,
+            open        = grosfs_open,
+            read        = grosfs_read,
+            write       = grosfs_write,
+            statfs      = grosfs_statfs,
+            release     = grosfs_release,
+            opendir     = grosfs_opendir,
+            releasedir  = grosfs_releasedir,
+            fsync       = grosfs_fsync,
+            flush       = grosfs_flush,
+            fsyncdir    = grosfs_fsyncdir,
+            lock        = grosfs_lock,
+            bmap        = grosfs_bmap,
+            ioctl       = grosfs_ioctl,
+            poll        = grosfs_poll,
+            #ifdef HAVE_SETXATTR
+            setxattr    = grosfs_setxattr,
+            getxattr    = grosfs_getxattr,
+            listxattr   = grosfs_listxattr,
+            #endif
+            flag_nullpath_ok = 0,                /* See below */
+    };
 #endif
-        .flag_nullpath_ok = 0,                /* See below */
-};
 
 #endif
