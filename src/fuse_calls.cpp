@@ -152,7 +152,7 @@ int grosfs_rename( const char * from, const char * to ) {
 
 // Create a hard link between "from" and "to". Hard links aren't required for a working filesystem, and many successful filesystems don't support them. If you do implement hard links, be aware that they have an effect on how unlink works. See link(2) for details.
 int grosfs_link( const char * from, const char * to ) {
-    return 0; // do this
+    return gros_copy(disk, from, to);
 }
 
 // Change the mode (permissions) of the given object to the given new permissions. Only the permissions bits of mode should be examined. See chmod(2) for details.
@@ -167,7 +167,7 @@ int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
 
 // Truncate or extend the given file so that it is precisely size bytes long. See truncate(2) for details. This call is required for read/write filesystems, because recreating a file will first truncate it.
 int grosfs_truncate( const char * path, off_t size ) {
-    return gros_truncate(disk, path, size); // do this
+    return gros_truncate(disk, path, size);
 }
 
 // As truncate, but called when ftruncate(2) is called by the user program.
@@ -293,7 +293,7 @@ grosfs_fsyncdir( const char * path, int isdatasync, struct fuse_file_info * fi )
 
 // Called on each close so that the filesystem has a chance to report delayed errors. Important: there may be more than one flush call for each open. Note: There is no guarantee that flush will ever be called at all!
 int grosfs_flush( const char * path, struct fuse_file_info * fi ) {
-    return 0; // what to do here?
+    return 0; // leave unimplemented
 }
 
 // Perform a POSIX file-locking operation. See details below.
