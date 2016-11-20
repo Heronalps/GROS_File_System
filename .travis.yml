@@ -14,6 +14,8 @@ addons:
   apt:
     sources:
       - ubuntu-toolchain-r-test
+      - fuse
+      - libfuse-dev
     packages:
       - gcc-4.8
       - g++-4.8
