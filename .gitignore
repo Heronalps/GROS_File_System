@@ -1,4 +1,11 @@
 grosfs
+grosfs.filesystem
+
+# Temp files
+.DS_STORE
+#*
+~*
+*.swp
 
 # Object files
 *.o
