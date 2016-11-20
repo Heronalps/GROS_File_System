@@ -523,7 +523,7 @@ int gros_i_ensure_size( Disk * disk, Inode * inode, int size ) {
     return bytes_to_allocate;
 }
 
-int ensure_size( Disk * disk, char * path, int size ) {
+int gros_ensure_size( Disk * disk, char * path, int size ) {
     return gros_i_ensure_size( disk,
                                gros_get_inode( disk, gros_namei( disk, path ) ),
                                size );
@@ -731,7 +731,7 @@ int gros_rename( Disk * disk, const char * path, const char * newname ) {
 * @param Inode *  inode    Inode corresponding to the file to resize
 * @param int      size     Desired file size
 */
-int i_truncate( Disk * disk, Inode * inode, int size ) {
+int gros_i_truncate( Disk * disk, Inode * inode, int size ) {
     char         data[ BLOCK_SIZE ]; /* buffer to read file contents into */
     int          block_size;         /* fs block size */
     int          file_size;          /* file size, i.e. inode->f_size */
