@@ -144,22 +144,29 @@ int grosfs_rmdir( const char * path ) {
 
 // Create a symbolic link named "from" which, when evaluated, will lead to "to". Not required if you don't support symbolic links. NOTE: Symbolic-link support requires only readlink and symlink. FUSE itself will take care of tracking symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
 int grosfs_symlink( const char * to, const char * from ) {
-	Inode * inode = gros_new_inode(disk);
+	const char * filename = strrchr( from, '/' ) + 1;
+    int length = strlen(from) - strlen(filename);
+    char * dirname = new char[ length ];
+
+    strncpy(dirname, from, length);
+    dirname[ length ] = '\0';
+
+    Inode * from_dir = gros_get_inode(disk, gros_namei( disk, dirname ) );
+    
+    Inode * inode = gros_new_inode(disk);
 	inode->f_acl = 0x7ff; // 11 111 111 111
 	inode->f_links = 1;
     DirEntry * direntry = new DirEntry();
 
-    new_file->f_links   = 1;
-    direntry->inode_num = new_file->f_inode_num;
-    strcpy( direntry->filename, from );
+    direntry->inode_num = inode->f_inode_num;
+    strcpy( direntry->filename, filename );
 
-    gros_i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ), inode->f_size );
-    gros_save_inode( disk, new_file );
-    file_num = new_file->f_inode_num;
+    gros_i_write( disk, from_dir, ( char * ) direntry, sizeof( DirEntry ), from_dir->f_size );
+    gros_save_inode( disk, inode );
+    gros_i_write( disk, inode, to, sizeof(to), 0);
 
-    delete new_file;
     delete direntry;
-    return file_num;
+    delete dirname;
 	
     return 0; // do this
 }
