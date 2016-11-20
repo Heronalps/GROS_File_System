@@ -21,7 +21,39 @@ int gros_fgetattr(const char* path, struct stat* stbuf) {
 }
 
 // This is the same as the access(2) system call. It returns -ENOENT if the path doesn't exist, -EACCESS if the requested permission isn't available, or 0 for success. Note that it can be called on files, directories, or any other object that appears in the filesystem. This call is not required but is highly recommended.
-int gros_access(const char* path, mask) {
+int gros_access(const char* path, int mask) {
+    struct fuse_context *ctxt;
+    int inode_num;
+    short r_ok, w_ok, x_ok;
+    short usr, grp, uni;
+    Inode *inode;
+    ctxt = fuse_get_context();
+
+    inode_num = gros_namei(disk, path);
+    if (inode_num < 0) return -ENOENT;
+
+    inode = gros_get_inode(disk, inode_num);
+    usr = inode->acl & 0x7;
+    grp = (inode->acl >> 3) & 0x7;
+    uni = (inode->acl >> 6) & 0x7;
+
+    r_ok = (uni & 0x4) ||
+          ((grp & 0x4) && ctxt->grp == inode->f_gid) ||
+          ((uid & 0x4) && ctxt->uid == inode->f_uid);
+    w_ok = (uni & 0x2) ||
+          ((grp & 0x2) && ctxt->grp == inode->f_gid) ||
+          ((uid & 0x2) && ctxt->uid == inode->f_uid);
+    x_ok = (uni & 0x1) ||
+          ((grp & 0x1) && ctxt->grp == inode->f_gid) ||
+          ((uid & 0x1) && ctxt->uid == inode->f_uid);
+
+    if ((mode & R_OK && !r_ok) ||
+        (mode & W_OK && !w_ok) ||
+        (mode & X_OK && !x_ok)) {
+        return -EACCESS;
+    }
+
+    return 0;
 }
 
 // If path is a symbolic link, fill buf with its target, up to size. See readlink(2) for how to handle a too-small buffer and for error codes. Not required if you don't support symbolic links. NOTE: Symbolic-link support requires only readlink and symlink. FUSE itself will take care of tracking symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
@@ -86,6 +118,41 @@ int gros_utimens(const char* path, const struct timespec ts[2]) {
 
 // Open a file. If you aren't using file handles, this function should just check for existence and permissions and return either success or an error code. If you use file handles, you should also allocate any necessary structures and set fi->fh. In addition, fi has some other fields that an advanced filesystem might find useful; see the structure definition in fuse_common.h for very brief commentary.
 int gros_open(const char* path, struct fuse_file_info* fi) {
+    struct fuse_context *ctxt;
+    int inode_num;
+    int mode = 0;
+    Inode *inode = NULL;
+    ctxt = fuse_get_context();
+
+    inode_num = gros_namei(disk, path);
+    if (inode_num > 0) {
+        inode = gros_get_inode(disk, inode_num);
+    }
+
+    if ((inode != NULL && inode->f_links > 0) && fi->flags & (O_CREATE|O_EXCL)) {
+        return -EEXIST;
+    } else if ((inode == NULL || inode->f_links == 0) && !(fi->flags & O_CREAT)) {
+        return -ENOENT;
+    } else if ((inode == NULL || inode->f_links == 0) && fi->flags & O_CREAT) {
+        inode = gros_new_inode(disk);
+    }
+
+    if (fi->flags & O_RDONLY || fi->flags & O_RDWR) {
+        mode |= R_OK;
+    }
+    if (fi->flags & O_WRONLY || fi->flags & O_TRUNC || fi->flags & O_RDWR) {
+        mode |= W_OK;
+    }
+    if (gros_access(path, mode) < 0) {
+        return -EACCES;
+    }
+
+    if (fi->flags & O_TRUNC) {
+        gros_i_truncate(disk, inode, 0);
+    }
+
+    fi->fh = inode_num;
+    return 0;
 }
 
 // Read size bytes from the given file into the buffer buf, beginning offset bytes into the file. See read(2) for full details. Returns the number of bytes transferred, or 0 if offset was at or beyond the end of the file. Required for any sensible filesystem.
