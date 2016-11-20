@@ -993,11 +993,6 @@ DirEntry * gros_readdir( Disk * disk, Inode * dir ) {
 
     return result;
 }
-int readdir_r( Disk * disk, Inode * dir, DirEntry *current, DirEntry **result) {
-	return 0;
-}
-
-
 
 /**
 * Copies a file from one directory to another, incrementing the number of links
