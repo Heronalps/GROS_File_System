@@ -195,6 +195,7 @@ int gros_lock(const char* path, struct fuse_file_info* fi, int cmd, struct flock
 int gros_bmap(const char* path, size_t blocksize, uint64_t* blockno) {
 }
 
+#ifdef HAVE_SETXATTR
 // Set an extended attribute. See setxattr(2). This should be implemented only if HAVE_SETXATTR is true.
 int gros_setxattr(const char* path, const char* name, const char* value, size_t size, int flags) {
 }
@@ -206,6 +207,7 @@ int gros_getxattr(const char* path, const char* name, char* value, size_t size) 
 // List the names of all extended attributes. See listxattr(2). This should be implemented only if HAVE_SETXATTR is true.
 int gros_listxattr(const char* path, const char* list, size_t size) {
 }
+#endif
 
 // Support the ioctl(2) system call. As such, almost everything is up to the filesystem. On a 64-bit machine, FUSE_IOCTL_COMPAT will be set for 32-bit ioctls. The size and direction of data is determined by _IOC_*() decoding of cmd. For _IOC_NONE, data will be NULL; for _IOC_WRITE data is being written by the user; for _IOC_READ it is being read, and if both are set the data is bidirectional. In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
 int gros_ioctl(const char* path, int cmd, void* arg, struct fuse_file_info* fi, unsigned int flags, void* data) {
