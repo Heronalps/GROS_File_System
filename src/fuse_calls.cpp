@@ -554,6 +554,8 @@ int grosfs_listxattr(const char* path, const char* list, size_t size) {
 // In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
 int grosfs_ioctl( const char * path, int cmd, void * arg,
                   struct fuse_file_info * fi, unsigned int flags, void * data ) {
+    if( )
+
     return 0; // TODO what to do here?
 }
 

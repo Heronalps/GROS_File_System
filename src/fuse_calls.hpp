@@ -26,6 +26,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <ioctl.h>
 
 #include "grosfs.hpp"
 #include "disk.hpp"
