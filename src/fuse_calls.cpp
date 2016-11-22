@@ -38,10 +38,9 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     if( inode_num < 0 ) return -ENOENT;
 
     inode = gros_get_inode( disk, inode_num );
-
-    usr = inode->f_acl & 0x7;
-    grp = ( inode->f_acl >> 3 ) & 0x7;
-    uni = ( inode->f_acl >> 6 ) & 0x7;
+    usr   = inode->f_acl & 0x7;
+    grp   = ( inode->f_acl >> 3 ) & 0x7;
+    uni   = ( inode->f_acl >> 6 ) & 0x7;
 
     stbuf->st_mode = 0;
     // user
@@ -57,21 +56,21 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     stbuf->st_mode = ( uni & 0x2 ) ? stbuf->st_mode | S_IWOTH : stbuf->st_mode;
     stbuf->st_mode = ( uni & 0x1 ) ? stbuf->st_mode | S_IXOTH : stbuf->st_mode;
 
-    stbuf->st_dev = 0; // not used
+    stbuf->st_dev  = 0; // not used
     stbuf->st_rdev = 0; // not used;
-    stbuf->st_ino = inode_num;
-    stbuf->st_uid = inode->f_uid;
-    stbuf->st_gid = inode->f_gid;
+    stbuf->st_ino  = inode_num;
+    stbuf->st_uid  = inode->f_uid;
+    stbuf->st_gid  = inode->f_gid;
 
     #if defined(__APPLE__) || defined(__MACH__)
         struct timespec a, m, c;
 
-        a.tv_sec = inode->f_atime / 1000;
-        a.tv_nsec = (inode->f_atime % 1000) * 1000000;
-        m.tv_sec = inode->f_mtime / 1000;
-        m.tv_nsec = (inode->f_mtime % 1000) * 1000000;
-        c.tv_sec = inode->f_ctime / 1000;
-        c.tv_nsec = (inode->f_ctime % 1000) * 1000000;
+        a.tv_sec  = inode->f_atime / 1000;
+        a.tv_nsec = ( inode->f_atime % 1000 ) * 1000000;
+        m.tv_sec  = inode->f_mtime / 1000;
+        m.tv_nsec = ( inode->f_mtime % 1000 ) * 1000000;
+        c.tv_sec  = inode->f_ctime / 1000;
+        c.tv_nsec = ( inode->f_ctime % 1000 ) * 1000000;
 
         stbuf->st_atimespec = a;
         stbuf->st_mtimespec = m;
@@ -82,9 +81,9 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
         stbuf->st_ctime = inode->f_ctime;
     #endif
 
-    stbuf->st_nlink = inode->f_links;
-    stbuf->st_size = inode->f_size;
-    stbuf->st_blocks = ( inode->f_size / BLOCK_SIZE ) + 1;
+    stbuf->st_nlink   = ( nlink_t ) inode->f_links;
+    stbuf->st_size    = inode->f_size;
+    stbuf->st_blocks  = ( inode->f_size / BLOCK_SIZE ) + 1;
     stbuf->st_blksize = BLOCK_SIZE;
 
     return 0;
@@ -297,34 +296,31 @@ int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
 // and set fi->fh. In addition, fi has some other fields that an advanced filesystem
 // might find useful; see the structure definition in fuse_common.h for very brief commentary.
 int grosfs_open( const char * path, struct fuse_file_info * fi ) {
-    int                   inode_num;
-    int                   mode  = 0;
-    Inode               * inode = NULL;
+    int     inode_num;
+    int     mode  = 0;
+    Inode * inode = NULL;
 
     inode_num = gros_namei( disk, path );
     if( inode_num > 0 )
         inode = gros_get_inode( disk, inode_num );
 
     if( ( inode != NULL && inode->f_links > 0 )
-        && fi->flags & ( O_CREAT | O_EXCL ) ) {
+        && fi->flags & ( O_CREAT | O_EXCL ) )
         return -EEXIST;
-    } else if( ( inode == NULL || inode->f_links == 0 )
-               && !( fi->flags & O_CREAT ) ) {
+    else if( ( inode == NULL || inode->f_links == 0 )
+             && !( fi->flags & O_CREAT ) )
         return -ENOENT;
-    } else if( ( inode == NULL || inode->f_links == 0 )
-               && fi->flags & O_CREAT ) {
+    else if( ( inode == NULL || inode->f_links == 0 )
+               && fi->flags & O_CREAT )
         inode = gros_new_inode( disk );
-    }
 
-    if( fi->flags & O_RDONLY || fi->flags & O_RDWR ) {
+
+    if( fi->flags & O_RDONLY || fi->flags & O_RDWR )
         mode |= R_OK;
-    }
-    if( fi->flags & O_WRONLY || fi->flags & O_TRUNC || fi->flags & O_RDWR ) {
+    if( fi->flags & O_WRONLY || fi->flags & O_TRUNC || fi->flags & O_RDWR )
         mode |= W_OK;
-    }
     if( grosfs_access( path, mode ) < 0 )
         return -EACCES;
-
     if( fi->flags & O_TRUNC )
         gros_i_truncate( disk, inode, 0 );
 
@@ -554,9 +550,23 @@ int grosfs_listxattr(const char* path, const char* list, size_t size) {
 // In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
 int grosfs_ioctl( const char * path, int cmd, void * arg,
                   struct fuse_file_info * fi, unsigned int flags, void * data ) {
-//    if( )
+    int size;
+    int dir = IOCBASECMD( cmd );
 
-    return 0; // TODO what to do here?
+    if( dir == IOC_VOID )
+        return 0;
+
+    size = IOCPARM_LEN( cmd );
+
+    if( dir == _IOR )
+        grosfs_read( path, ( char * ) data, ( size_t ) size, 0, fi );
+    else if( dir == _IOW )
+        grosfs_write( path, ( char * ) data, ( size_t ) size, 0, fi );
+    else if( dir == _IOWR)
+        // TODO what to do here?
+
+
+    return 0;
 }
 
 
