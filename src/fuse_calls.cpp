@@ -217,8 +217,8 @@ int grosfs_symlink( const char * to, const char * from ) {
     gros_save_inode( disk, inode );
     gros_i_write( disk, inode, ( char * ) to, sizeof( to ), 0 );
 
-    delete direntry;
-    delete dirname;
+    delete    direntry;
+    delete [] dirname;
 
     return 0;
 }
@@ -554,7 +554,7 @@ int grosfs_listxattr(const char* path, const char* list, size_t size) {
 // In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
 int grosfs_ioctl( const char * path, int cmd, void * arg,
                   struct fuse_file_info * fi, unsigned int flags, void * data ) {
-    if( )
+//    if( )
 
     return 0; // TODO what to do here?
 }
