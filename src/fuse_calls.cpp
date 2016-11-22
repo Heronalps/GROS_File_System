@@ -550,21 +550,19 @@ int grosfs_listxattr(const char* path, const char* list, size_t size) {
 // In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
 int grosfs_ioctl( const char * path, int cmd, void * arg,
                   struct fuse_file_info * fi, unsigned int flags, void * data ) {
-    int size;
-    int dir = IOCBASECMD( cmd );
+    int size = IOCPARM_LEN( cmd );
+    int dir  = IOCBASECMD( cmd );
 
-    if( dir == IOC_VOID )
-        return 0;
-
-    size = IOCPARM_LEN( cmd );
-
-    if( dir == _IOR )
-        grosfs_read( path, ( char * ) data, ( size_t ) size, 0, fi );
-    else if( dir == _IOW )
-        grosfs_write( path, ( char * ) data, ( size_t ) size, 0, fi );
-    else if( dir == _IOWR)
-        // TODO what to do here?
-
+    switch( dir ) {
+        case _IOR:
+            grosfs_read( path, ( char * ) data, ( size_t ) size, 0, fi );
+        case _IOW:
+            grosfs_write( path, ( char * ) data, ( size_t ) size, 0, fi );
+        case _IOWR:
+            // TODO what to do here?
+        default:
+            return -EINVAL;
+    }
 
     return 0;
 }
