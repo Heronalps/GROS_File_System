@@ -553,6 +553,7 @@ int grosfs_ioctl( const char * path, int cmd, void * arg,
     int size = IOCPARM_LEN( cmd );
     int dir  = IOCBASECMD( cmd );
 
+/*
     switch( dir ) {
         case _IOR:
             grosfs_read( path, ( char * ) data, ( size_t ) size, 0, fi );
@@ -563,6 +564,7 @@ int grosfs_ioctl( const char * path, int cmd, void * arg,
         default:
             return -EINVAL;
     }
+*/
 
     return 0;
 }
