@@ -150,13 +150,13 @@ TEST_CASE( "Bitmap can detect first unset bit", "[bitmap]" ) {
     }
 
     SECTION( "No available bits" ) {
-        char buf[] = { 0xff };
+        char buf[] = { ( char ) 0xff };
         Bitmap * bm = gros_init_bitmap( 8, buf );
         REQUIRE( gros_first_unset_bit( bm ) == -1 );
     }
 
     SECTION( "Available bit in second number" ) {
-        char buf[] = { 0xff, 0x0 };
+        char buf[] = { ( char ) 0xff, 0x0 };
         Bitmap * bm = gros_init_bitmap( 16, buf );
         REQUIRE( gros_first_unset_bit( bm ) == 8 );
     }
