@@ -555,7 +555,7 @@ int grosfs_ioctl( const char * path, int cmd, void * arg,
 
 /*
     switch( dir ) {
-        case _IOR:
+        case _IO:
             grosfs_read( path, ( char * ) data, ( size_t ) size, 0, fi );
         case _IOW:
             grosfs_write( path, ( char * ) data, ( size_t ) size, 0, fi );
