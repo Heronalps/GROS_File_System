@@ -4,6 +4,7 @@
 #include <time.h>
 #include <math.h>
 #include <cstring>
+#include <iostream>
 
 #ifndef __GROSFS_H_INCLUDED__   // if grosfs.h hasn't been included yet...
 #define __GROSFS_H_INCLUDED__   //   #define this so the compiler knows it has been included
@@ -21,6 +22,13 @@
 
 // the space at the end of the superblock data up until the end of the block
 #define SB_ILIST_SIZE ( BLOCK_SIZE - 9 * sizeof( int ) )
+
+#define DEBUG
+#ifdef DEBUG
+#define pdebug std::cout << __FILE__ << "(" << __LINE__ << ") DEBUG: "
+#else
+#define pdebug 0 && std::cout
+#endif
 
 #include "bitmap.hpp"
 #include "disk.hpp"

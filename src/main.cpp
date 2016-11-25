@@ -14,6 +14,8 @@ int main( int argc, char * argv[] ) {
     initfuseops();
     int result;
 
+    pdebug << "Hello Debug" << std::endl;
+
     const char* env_p = std::getenv("RUN_ENV");
     if (env_p && strcmp(env_p, "test") == 0) {
         result = Catch::Session() . run( argc, argv );
