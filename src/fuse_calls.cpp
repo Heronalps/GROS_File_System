@@ -28,39 +28,39 @@ void grosfs_destroy( void * private_data ) {
 // then it should be set to 0 or given a "reasonable" value. This call is pretty
 // much required for a usable filesystem.
 int grosfs_getattr( const char * path, struct stat * stbuf ) {
-    struct fuse_context * ctxt;
+//    struct fuse_context * ctxt;
     int                   inode_num;
     short                 usr, grp, uni;
     Inode               * inode;
-    ctxt = fuse_get_context();
+//    ctxt = fuse_get_context();
 
     inode_num = gros_namei( disk, path );
     if( inode_num < 0 ) return -ENOENT;
 
     inode = gros_get_inode( disk, inode_num );
-    usr   = inode->f_acl & 0x7;
-    grp   = ( inode->f_acl >> 3 ) & 0x7;
-    uni   = ( inode->f_acl >> 6 ) & 0x7;
+    usr   = ( short ) ( inode->f_acl & 0x7 );
+    grp   = ( short ) ( ( inode->f_acl >> 3 ) & 0x7 );
+    uni   = ( short ) ( ( inode->f_acl >> 6 ) & 0x7 );
 
     stbuf->st_mode = 0;
     // user
-    stbuf->st_mode = ( usr & 0x4 ) ? stbuf->st_mode | S_IRUSR : stbuf->st_mode;
-    stbuf->st_mode = ( usr & 0x2 ) ? stbuf->st_mode | S_IWUSR : stbuf->st_mode;
-    stbuf->st_mode = ( usr & 0x1 ) ? stbuf->st_mode | S_IXUSR : stbuf->st_mode;
+    stbuf->st_mode = ( mode_t ) ( ( usr & 0x4 ) ? stbuf->st_mode | S_IRUSR : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( usr & 0x2 ) ? stbuf->st_mode | S_IWUSR : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( usr & 0x1 ) ? stbuf->st_mode | S_IXUSR : stbuf->st_mode );
     // group
-    stbuf->st_mode = ( grp & 0x4 ) ? stbuf->st_mode | S_IRGRP : stbuf->st_mode;
-    stbuf->st_mode = ( grp & 0x2 ) ? stbuf->st_mode | S_IWGRP : stbuf->st_mode;
-    stbuf->st_mode = ( grp & 0x1 ) ? stbuf->st_mode | S_IXGRP : stbuf->st_mode;
+    stbuf->st_mode = ( mode_t ) ( ( grp & 0x4 ) ? stbuf->st_mode | S_IRGRP : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( grp & 0x2 ) ? stbuf->st_mode | S_IWGRP : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( grp & 0x1 ) ? stbuf->st_mode | S_IXGRP : stbuf->st_mode );
     // universe
-    stbuf->st_mode = ( uni & 0x4 ) ? stbuf->st_mode | S_IROTH : stbuf->st_mode;
-    stbuf->st_mode = ( uni & 0x2 ) ? stbuf->st_mode | S_IWOTH : stbuf->st_mode;
-    stbuf->st_mode = ( uni & 0x1 ) ? stbuf->st_mode | S_IXOTH : stbuf->st_mode;
+    stbuf->st_mode = ( mode_t ) ( ( uni & 0x4 ) ? stbuf->st_mode | S_IROTH : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( uni & 0x2 ) ? stbuf->st_mode | S_IWOTH : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( uni & 0x1 ) ? stbuf->st_mode | S_IXOTH : stbuf->st_mode );
 
     stbuf->st_dev  = 0; // not used
     stbuf->st_rdev = 0; // not used;
     stbuf->st_ino  = inode_num;
-    stbuf->st_uid  = inode->f_uid;
-    stbuf->st_gid  = inode->f_gid;
+    stbuf->st_uid  = ( uid_t ) inode->f_uid;
+    stbuf->st_gid  = ( gid_t ) inode->f_gid;
 
     #if defined(__APPLE__) || defined(__MACH__)
         struct timespec a, m, c;
@@ -110,9 +110,9 @@ int grosfs_access( const char * path, int mask ) {
     if( inode_num < 0 ) return -ENOENT;
 
     inode = gros_get_inode( disk, inode_num );
-    usr = inode->f_acl & 0x7;
-    grp = ( inode->f_acl >> 3 ) & 0x7;
-    uni = ( inode->f_acl >> 6 ) & 0x7;
+    usr = ( short ) ( inode->f_acl & 0x7 );
+    grp = ( short ) ( ( inode->f_acl >> 3 ) & 0x7 );
+    uni = ( short ) ( ( inode->f_acl >> 6 ) & 0x7 );
 
     r_ok = ( uni & 0x4 ) ||
            ( ( grp & 0x4 ) && ctxt->gid == inode->f_gid ) ||
@@ -361,14 +361,14 @@ int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
     Superblock  * sb  = new Superblock();
     gros_read_block( disk, 0, ( char * ) sb );
 
-    stbuf->f_bsize   = sb->fs_block_size;                            /* file system block size */
+    stbuf->f_bsize   = ( unsigned long ) sb->fs_block_size;          /* file system block size */
     stbuf->f_frsize  = 0;                                            /* fragment size */
-    stbuf->f_blocks  = sb->fs_num_blocks;                            /* size of fs in f_frsize units */
-    stbuf->f_bfree   = sb->fs_num_blocks - sb->fs_num_used_blocks;   /* # free blocks */
-    stbuf->f_bavail  = sb->fs_num_blocks - sb->fs_num_used_blocks;   /* # free blocks for unprivileged users */
-    stbuf->f_files   = sb->fs_num_inodes;                            /* # inodes */
-    stbuf->f_ffree   = sb->fs_num_inodes - sb->fs_num_used_inodes;   /* # free inodes */
-    stbuf->f_favail  = sb->fs_num_inodes - sb->fs_num_used_inodes;   /* # free inodes for unprivileged users */
+    stbuf->f_blocks  = ( fsblkcnt_t ) sb->fs_num_blocks;             /* size of fs in f_frsize units */
+    stbuf->f_bfree   = ( fsblkcnt_t ) ( sb->fs_num_blocks - sb->fs_num_used_blocks );   /* # free blocks */
+    stbuf->f_bavail  = ( fsblkcnt_t ) ( sb->fs_num_blocks - sb->fs_num_used_blocks );   /* # free blocks for unprivileged users */
+    stbuf->f_files   = ( fsfilcnt_t ) sb->fs_num_inodes;             /* # inodes */
+    stbuf->f_ffree   = ( fsfilcnt_t ) ( sb->fs_num_inodes - sb->fs_num_used_inodes );   /* # free inodes */
+    stbuf->f_favail  = ( fsfilcnt_t ) ( sb->fs_num_inodes - sb->fs_num_used_inodes );   /* # free inodes for unprivileged users */
     stbuf->f_fsid    = 0;                                            /* file system ID */
     stbuf->f_flag    = 0;                                            /* mount flags */
     stbuf->f_namemax = FILENAME_MAX_LENGTH;                          /* maximum filename length */
