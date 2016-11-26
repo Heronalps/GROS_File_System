@@ -1,8 +1,6 @@
 #include "grosfs.hpp"
 #include "files.hpp"
 
-Disk * disk =  gros_open_disk();
-
 
 /**
  * creates the superblock, free inode list, and free block list on disk

@@ -35,8 +35,6 @@
 //#include "files.hpp"
 #include "../include/catch.hpp"
 
-extern Disk * disk;
-
 typedef struct _superblock {
     int fs_disk_size;        /* total size of disk, in bytes */
     int fs_block_size;       /* size of disk blocks, in bytes */

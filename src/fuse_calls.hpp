@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
+#include <sys/uio.h>
 
 #include "grosfs.hpp"
 #include "disk.hpp"
@@ -35,6 +36,10 @@
 #ifdef HAVE_SETXATTR
 #include <sys/xattr.h>
 #endif
+
+struct fusedata {
+    Disk * disk;
+};
 
 // Initialize the filesystem. This function can often be left unimplemented, but it can be a handy way to perform one-time setup such as allocating variable-sized data structures or initializing a new filesystem. The fuse_conn_info structure gives information about what features are supported by FUSE, and can be used to request certain capabilities (see below for more information). The return value of this function is available to all file operations in the private_data field of fuse_context. It is also passed as a parameter to the destroy() method. (Note: see the warning under Other Options below, regarding relative pathnames.)
 void * grosfs_init( struct fuse_conn_info * conn );
@@ -166,7 +171,7 @@ grosfs_ioctl( const char * path, int cmd, void * arg, struct fuse_file_info * fi
 int grosfs_poll( const char * path, struct fuse_file_info * fi,
                  struct fuse_pollhandle * ph, unsigned * reventsp );
 
-static struct fuse_operations grosfs_oper;
-void initfuseops();
+//static struct fuse_operations grosfs_oper;
+struct fuse_operations initfuseops();
 
 #endif
