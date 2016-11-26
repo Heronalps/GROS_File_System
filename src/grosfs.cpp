@@ -621,7 +621,7 @@ int gros_save_inode( Disk * disk, Inode * inode ) {
     inode_num        = inode->f_inode_num;
     inodes_per_block = ( int ) floor( superblock->fs_block_size
                                       / superblock->fs_inode_size );
-    block_num        = inode_num / inodes_per_block;
+    block_num        = 1+inode_num / inodes_per_block;
     rel_inode_index  = inode_num % inodes_per_block;
 
     // save the inode to disk
