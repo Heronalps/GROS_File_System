@@ -178,9 +178,11 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
 int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_readdir" << std::endl;
+    struct stat *root = new struct stat();
+    grosfs_getattr( path, root );
 
-    filler(buf, ".", NULL, 0);
-    filler(buf, "..", NULL, 0);
+    filler(buf, ".", root, 0);
+    filler(buf, "..", root, 0);
 
     // To traverse the path by gros_readdir()
 
@@ -696,7 +698,7 @@ struct fuse_operations initfuseops() {
 	grosfs_oper.lock        = grosfs_lock;
 	grosfs_oper.utimens     = grosfs_utimens;
 	grosfs_oper.bmap        = grosfs_bmap;
-	grosfs_oper.ioctl       = grosfs_ioctl;
+//	grosfs_oper.ioctl       = grosfs_ioctl;
 	grosfs_oper.poll        = grosfs_poll;
 
 	grosfs_oper.fgetattr    = grosfs_fgetattr;

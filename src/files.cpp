@@ -45,6 +45,10 @@ int gros_namei( Disk * disk, const char * path ) {
     Inode    * dir;
     DirEntry * direntry = NULL;
 
+    if ( ! strcmp( path, "/" ) ) {
+        return 0;
+    }
+
     // start at root
     dir      = gros_get_inode( disk, 0 );
     // parse name from path
