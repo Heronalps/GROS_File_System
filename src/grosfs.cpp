@@ -21,7 +21,7 @@ void gros_make_fs( Disk * disk ) {
                                                      / superblock->fs_inode_size );
     superblock->fs_num_blocks       = ( int ) floor( num_blocks * DATA_BLOCKS );
     superblock->fs_num_inodes       = num_inode_blocks * inode_per_block;
-    superblock->fs_num_block_groups = ( int ) ceil( superblock->fs_num_blocks
+    superblock->fs_num_block_groups = ( int ) ceil( 1.0f*superblock->fs_num_blocks
                                                     / superblock->fs_block_size );
     superblock->fs_num_used_inodes  = 0;
     superblock->fs_num_used_blocks  = 0;
@@ -71,7 +71,7 @@ void gros_init_inodes( Disk * disk, int num_inode_blocks, int inodes_per_block )
     int     j;
     int     inode_num;
     int     rel_inode_index;
-    char    ibuf[ BLOCK_SIZE ];
+    Inode   inodes[BLOCK_SIZE / sizeof(Inode)];
     Inode * tmp;
 
     inode_num    = 0;
@@ -84,16 +84,13 @@ void gros_init_inodes( Disk * disk, int num_inode_blocks, int inodes_per_block )
     // inodes are in blocks 1 through `num_inode_blocks`
     for( i = 1; i <= num_inode_blocks; i++ ) {
         // gros_read in the block to fill with inodes
-        gros_read_block( disk, i, ( char * ) ibuf );
 
         for( j = 0; j < inodes_per_block; j++ ) {
             tmp->f_inode_num = inode_num++;
             rel_inode_index = j % inodes_per_block;
-            std::memcpy( ( ( Inode * ) ibuf ) + rel_inode_index,
-                         tmp,
-                         sizeof( Inode ) );
+            std::memcpy(&(inodes[rel_inode_index]), tmp, sizeof(Inode));
         }
-        gros_write_block( disk, i, ( char * ) ibuf );
+        gros_write_block( disk, i, ( char * ) inodes );
     }
     delete tmp;
 }
@@ -591,7 +588,7 @@ Inode * gros_get_inode( Disk * disk, int inode_num ) {
     superblock = ( Superblock * ) buf;
     inodes_per_block = ( int ) floor( superblock->fs_block_size
                                       / superblock->fs_inode_size );
-    block_num       = inode_num / inodes_per_block;
+    block_num       = 1+inode_num / inodes_per_block;
     rel_inode_index = inode_num % inodes_per_block;
 
     gros_read_block( disk, block_num, buf );
