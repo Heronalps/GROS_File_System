@@ -15,6 +15,7 @@
 #define INODE_BLOCKS  0.1       // 10% inode blocks
 
 typedef struct _disk {
+    bool isnew;
     int size;
     int fd;
 } Disk;

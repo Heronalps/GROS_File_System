@@ -20,6 +20,7 @@ Disk * gros_open_disk() {
     int    result;
     Disk * disk = new Disk();
     disk->size  = EMULATOR_SIZE;
+    disk->isnew = access( "grosfs.filesystem", F_OK ) == -1;
     disk->fd = open( "grosfs.filesystem", O_RDWR | O_CREAT, ( mode_t ) 0600 );
     if( disk->fd == -1 ) {
         printf( "Could not open device for file system..\n" );
