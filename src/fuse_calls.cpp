@@ -671,7 +671,7 @@ int grosfs_poll( const char * path, struct fuse_file_info * fi,
 
 int grosfs_create( char const * path, mode_t mode, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_create ( \"" << path << "\", " << mode << " ) " << std::endl;
-    return 0;
+    return grosfs_mknod(path, mode, 0);
 }
 
 
