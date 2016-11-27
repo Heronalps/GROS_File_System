@@ -37,7 +37,7 @@ void grosfs_destroy( void * private_data ) {
 // then it should be set to 0 or given a "reasonable" value. This call is pretty
 // much required for a usable filesystem.
 int grosfs_getattr( const char * path, struct stat * stbuf ) {
-    pdebug << "in grosfs_getattr" << std::endl;
+    pdebug << "in grosfs_getattr ( \"" << path << "\" )" << std::endl;
     struct fuse_context * ctxt;
     int                   inode_num;
     short                 ftyp, usr, grp, uni;
@@ -118,7 +118,7 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
 
 // As getattr, but called when fgetattr(2) is invoked by the user program.
 int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_info *fi ) {
-    pdebug << "in grosfs_fgetattr" << std::endl;
+    pdebug << "in grosfs_fgetattr ( \"" << path << "\" )" << std::endl;
     return grosfs_getattr( path, stbuf );
 }
 
@@ -127,7 +127,7 @@ int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_in
 // success. Note that it can be called on files, directories, or any other object
 // that appears in the filesystem. This call is not required but is highly recommended.
 int grosfs_access( const char * path, int mask ) {
-    pdebug << "in grosfs_access" << std::endl;
+    pdebug << "in grosfs_access ( \"" << path << "\", " << mask << " ) " << std::endl;
 
     struct fuse_context * ctxt;
     int inode_num;
@@ -170,13 +170,13 @@ int grosfs_access( const char * path, int mask ) {
 // requires only readlink and symlink. FUSE itself will take care of tracking
 // symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
 int grosfs_readlink( const char * path, char * buf, size_t size ) {
-    pdebug << "in grosfs_readlink" << std::endl;
+    pdebug << "in grosfs_readlink ( \"" << path << "\", " << buf << ", " << size << " ) " << std::endl;
     return 0; // TODO this
 }
 
 // Open a directory for reading.
 int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_opendir" << std::endl;
+    pdebug << "in grosfs_opendir ( \"" << path << "\" ) " << std::endl;
     return 0; // TODO what to do here?
 }
 
@@ -188,7 +188,7 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
 // bunch of other things work.
 int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_readdir" << std::endl;
+    pdebug << "in grosfs_readdir ( \"" << path << "\", " << offset << " )" << std::endl;
     struct stat *root = new struct stat();
     grosfs_getattr( path, root );
 
@@ -204,7 +204,7 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 // This function is rarely needed, since it's uncommon to make these objects
 // inside special-purpose filesystems.
 int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
-    pdebug << "in grosfs_mknod" << std::endl;
+    pdebug << "in grosfs_mknod ( \"" << path << "\", " << mode << ", " << rdev << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_mknod( mydata->disk, path );
 }
@@ -213,7 +213,7 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
 // in mode. See mkdir(2) for details. This function is needed for any reasonable
 // read/write filesystem.
 int grosfs_mkdir( const char * path, mode_t mode ) {
-    pdebug << "in grosfs_mkdir" << std::endl;
+    pdebug << "in grosfs_mkdir ( \"" << path << "\", " << mode << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_mkdir( mydata->disk, path );
 }
@@ -222,7 +222,7 @@ int grosfs_mkdir( const char * path, mode_t mode ) {
 // Note that if you support hard links, unlink only deletes the data when the
 // last hard link is removed. See unlink(2) for details.
 int grosfs_unlink( const char * path ) {
-    pdebug << "in grosfs_unlink" << std::endl;
+    pdebug << "in grosfs_unlink ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_unlink( mydata->disk, path );
 }
@@ -230,7 +230,7 @@ int grosfs_unlink( const char * path ) {
 // Remove the given directory. This should succeed only if the directory is empty
 // (except for "." and ".."). See rmdir(2) for details.
 int grosfs_rmdir( const char * path ) {
-    pdebug << "in grosfs_rmdir" << std::endl;
+    pdebug << "in grosfs_rmdir ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_rmdir( mydata->disk, path );
 }
@@ -240,7 +240,7 @@ int grosfs_rmdir( const char * path ) {
 // requires only readlink and symlink. FUSE itself will take care of tracking
 // symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
 int grosfs_symlink( const char * to, const char * from ) {
-    pdebug << "in grosfs_symlink" << std::endl;
+    pdebug << "in grosfs_symlink ( " << to << ", " << from << " ) " << std::endl;
     const char * filename = strrchr( from, '/' ) + 1;
     int          length   = ( int ) ( strlen( from ) - strlen( filename ) );
     char       * dirname  = new char[ length ];
@@ -274,7 +274,7 @@ int grosfs_symlink( const char * to, const char * from ) {
 // may be necessary to move the source to an entirely new directory. See rename(2)
 // for full details.
 int grosfs_rename( const char * from, const char * to ) {
-    pdebug << "in grosfs_rename" << std::endl;
+    pdebug << "in grosfs_rename ( " << from << ", " << to << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_frename( mydata->disk, from, to );
 }
@@ -285,7 +285,7 @@ int grosfs_rename( const char * from, const char * to ) {
 // If you do implement hard links, be aware that they have an effect on how
 // unlink works. See link(2) for details.
 int grosfs_link( const char * from, const char * to ) {
-    pdebug << "in grosfs_link" << std::endl;
+    pdebug << "in grosfs_link ( " << from << ", " << to << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_copy( mydata->disk, from, to );
 }
@@ -294,7 +294,7 @@ int grosfs_link( const char * from, const char * to ) {
 // Change the mode (permissions) of the given object to the given new permissions.
 // Only the permissions bits of mode should be examined. See chmod(2) for details.
 int grosfs_chmod( const char * path, mode_t mode ) {
-    pdebug << "in grosfs_chmod" << std::endl;
+    pdebug << "in grosfs_chmod ( \"" << path << "\", " << mode << " ) " << std::endl;
     return 0; // leave unimplemented
 }
 
@@ -305,7 +305,7 @@ int grosfs_chmod( const char * path, mode_t mode ) {
 // restricted to the superuser. It's often easier to pretend that all files are
 // owned by the user who mounted the filesystem, and to skip implementing this function.
 int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
-    pdebug << "in grosfs_chown" << std::endl;
+    pdebug << "in grosfs_chown ( \"" << path << "\", " << uid << ", " << gid << " ) " << std::endl;
     return 0; // leave unimplemented
 }
 
@@ -314,7 +314,7 @@ int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
 // See truncate(2) for details. This call is required for read/write filesystems,
 // because recreating a file will first truncate it.
 int grosfs_truncate( const char * path, off_t size ) {
-    pdebug << "in grosfs_truncate" << std::endl;
+    pdebug << "in grosfs_truncate ( \"" << path << "\", " << size << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_truncate( mydata->disk, path, size );
 }
@@ -322,7 +322,7 @@ int grosfs_truncate( const char * path, off_t size ) {
 
 // As truncate, but called when ftruncate(2) is called by the user program.
 int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi ) {
-    pdebug << "in grosfs_ftruncate" << std::endl;
+    pdebug << "in grosfs_ftruncate ( \"" << path << "\", " << size << " ) " << std::endl;
     return grosfs_truncate( path, size );
 }
 
@@ -334,7 +334,7 @@ int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi )
 // however, I don't know if FUSE functions have to support them. This function
 // isn't necessary but is nice to have in a fully functional filesystem.
 int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
-    pdebug << "in grosfs_utimens" << std::endl;
+    pdebug << "in grosfs_utimens ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     int      inode_num = gros_namei( mydata->disk, path );
     Inode * inode      = gros_get_inode( mydata->disk, inode_num );
@@ -353,7 +353,7 @@ int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
 // and set fi->fh. In addition, fi has some other fields that an advanced filesystem
 // might find useful; see the structure definition in fuse_common.h for very brief commentary.
 int grosfs_open( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_open" << std::endl;
+    pdebug << "in grosfs_open ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
 
     int     inode_num;
@@ -412,6 +412,7 @@ int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
 int grosfs_write( const char * path, const char * buf, size_t size, off_t offset,
                   struct fuse_file_info * fi ) {
     pdebug << "in grosfs_write" << std::endl;
+    pdebug << "writing " << size << " bytes to offset " << offset << " into file " << path << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     if( fi->fh != 0 )
         fi->fh = ( uint64_t ) gros_namei( mydata->disk, path );
@@ -425,7 +426,7 @@ int grosfs_write( const char * path, const char * buf, size_t size, off_t offset
 // the structure contents. Usually, you can ignore the path. Not required, but handy
 // for read/write filesystems since this is how programs like df determine the free space.
 int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
-    pdebug << "in grosfs_statfs" << std::endl;
+    pdebug << "in grosfs_statfs ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     Superblock  * sb  = new Superblock();
     gros_read_block( mydata->disk, 0, ( char * ) sb );
@@ -453,14 +454,14 @@ int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
 // The IBM document claims that there is exactly one release per open,
 // but I don't know if that is true.
 int grosfs_release( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_release" << std::endl;
+    pdebug << "in grosfs_release ( \"" << path << "\" ) " << std::endl;
     return 0; // leave unimplemented
 }
 
 
 // This is like release, except for directories.
 int grosfs_releasedir( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_releasedir" << std::endl;
+    pdebug << "in grosfs_releasedir ( \"" << path << "\" ) " << std::endl;
     return 0; // leave unimplemented
 }
 
@@ -473,14 +474,14 @@ int grosfs_releasedir( const char * path, struct fuse_file_info * fi ) {
 // implement this by calling fsync(2) on that file, which will flush too much data
 // (slowing performance) but achieve the desired guarantee.
 int grosfs_fsync( const char * path, int isdatasync, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_fsync" << std::endl;
+    pdebug << "in grosfs_fsync ( \"" << path << "\", " << isdatasync << " ) " << std::endl;
     return 0; // leave unimplemented
 }
 
 
 // Like fsync, but for directories.
 int grosfs_fsyncdir( const char * path, int isdatasync, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_fsyncdir" << std::endl;
+    pdebug << "in grosfs_fsyncdir ( \"" << path << "\", " << isdatasync << " ) " << std::endl;
     return 0; // leave unimplemented
 }
 
@@ -489,7 +490,7 @@ int grosfs_fsyncdir( const char * path, int isdatasync, struct fuse_file_info * 
 // Important: there may be more than one flush call for each open.
 // Note: There is no guarantee that flush will ever be called at all!
 int grosfs_flush( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_flush" << std::endl;
+    pdebug << "in grosfs_flush ( \"" << path << "\" ) " << std::endl;
     return 0; // leave unimplemented
 }
 
@@ -497,7 +498,7 @@ int grosfs_flush( const char * path, struct fuse_file_info * fi ) {
 // Perform a POSIX file-locking operation. See details below.
 int grosfs_lock( const char * path, struct fuse_file_info * fi, int cmd,
                  struct flock * locks ) {
-    pdebug << "in grosfs_lock" << std::endl;
+    pdebug << "in grosfs_lock ( \"" << path << "\" ) " << std::endl;
     return 0; // leave unimplemented
 }
 
@@ -506,7 +507,7 @@ int grosfs_lock( const char * path, struct fuse_file_info * fi, int cmd,
 // it converts blockno from a file-relative block number to a device-relative block.
 // It isn't entirely clear how the blocksize parameter is intended to be used.
 int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
-    pdebug << "in grosfs_bmap" << std::endl;
+    pdebug << "in grosfs_bmap ( \"" << path << "\", " << blocksize << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     int          block_size;         /* fs block size */
     int          n_indirects;        /* how many ints can fit in a block */
@@ -604,13 +605,13 @@ int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
 #ifdef HAVE_SETXATTR
 // Set an extended attribute. See setxattr(2). This should be implemented only if HAVE_SETXATTR is true.
 int grosfs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags) {
-    pdebug << "in grosfs_setxattr" << std::endl;
+    pdebug << "in grosfs_setxattr ( \"" << path << "\", " << name << ", " << value << ", " << size << ", " << flags << " ) " << std::endl;
     return 0; // leave unimplemented
 }
 
 // Read an extended attribute. See getxattr(2). This should be implemented only if HAVE_SETXATTR is true.
 int grosfs_getxattr(const char* path, const char* name, char* value, size_t size) {
-    pdebug << "in grosfs_getxattr" << std::endl;
+    pdebug << "in grosfs_getxattr ( \"" << path << "\", " << name << ", " << value << ", " << size << " ) " << std::endl;
     return 0; // leave unimplemented
 }
 
@@ -630,7 +631,7 @@ int grosfs_listxattr(const char* path, const char* list, size_t size) {
 // In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
 int grosfs_ioctl( const char * path, int cmd, void * arg,
                   struct fuse_file_info * fi, unsigned int flags, void * data ) {
-    pdebug << "in grosfs_ioctl" << std::endl;
+    pdebug << "in grosfs_ioctl ( \"" << path << "\", " << cmd << ", " << flags << " ) " << std::endl;
     int size = IOCPARM_LEN( cmd );
     long dir  = IOCBASECMD( cmd );
 
@@ -661,13 +662,13 @@ int grosfs_ioctl( const char * path, int cmd, void * arg,
 // with fuse_pollhandle_destroy() when ph is no longer needed.
 int grosfs_poll( const char * path, struct fuse_file_info * fi,
                  struct fuse_pollhandle * ph, unsigned * reventsp ) {
-    pdebug << "in grosfs_poll" << std::endl;
+    pdebug << "in grosfs_poll ( \"" << path << "\" ) " << std::endl;
     return 0; // leave unimplemented
 }
 
 
 int grosfs_create( char const * path, mode_t mode, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_create" << std::endl;
+    pdebug << "in grosfs_create ( \"" << path << "\", " << mode << " ) " << std::endl;
     return 0;
 }
 
