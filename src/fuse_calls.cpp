@@ -634,8 +634,8 @@ int grosfs_listxattr(const char* path, const char* list, size_t size) {
 int grosfs_ioctl( const char * path, int cmd, void * arg,
                   struct fuse_file_info * fi, unsigned int flags, void * data ) {
     pdebug << "in grosfs_ioctl ( \"" << path << "\", " << cmd << ", " << flags << " ) " << std::endl;
-    int size = IOCPARM_LEN( cmd );
-    long dir  = IOCBASECMD( cmd );
+//    int size = IOCPARM_LEN( cmd );
+//    long dir  = IOCBASECMD( cmd );
 
 
     if (flags & FUSE_IOCTL_COMPAT)
