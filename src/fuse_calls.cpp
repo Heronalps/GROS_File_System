@@ -51,20 +51,22 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     if( inode_num < 0 ) return -ENOENT;
 
     inode = gros_get_inode( mydata->disk, inode_num );
-    ftyp  = ( short ) ( ( inode->f_acl >> 9 ) & 0x4 );
+    ftyp  = ( short ) ( ( inode->f_acl >> 9 ) & 0x5 );
     usr   = ( short ) ( ( inode->f_acl >> 6 ) & 0x7 );
     grp   = ( short ) ( ( inode->f_acl >> 3 ) & 0x7 );
     uni   = ( short ) ( inode->f_acl & 0x7 );
 
     switch ( ftyp ) {
         case 0: // regular file
-            stbuf->st_mode = S_IFREG;
+            stbuf->st_mode = S_IFREG; break;
         case 1: // directory
-            stbuf->st_mode = S_IFDIR;
+            stbuf->st_mode = S_IFDIR; break;
         case 2: // device
-            stbuf->st_mode = S_IFBLK;
-        case 3: default: // symlink
-            stbuf->st_mode = S_IFLNK;
+            stbuf->st_mode = S_IFBLK; break;
+        case 3: // symlink
+            stbuf->st_mode = S_IFLNK; break;
+        default:
+            stbuf->st_mode = S_IFREG; break;
     }
 
     // user
