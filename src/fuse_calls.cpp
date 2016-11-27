@@ -17,16 +17,16 @@ void * grosfs_init( struct fuse_conn_info * conn ) {
     pdebug << "in grosfs_init" << std::endl;
     struct fusedata * mydata = new struct fusedata();
     mydata->disk = gros_open_disk();
-    if (mydata->disk->isnew) {
-        gros_make_fs(mydata->disk);
-    }
+    if( mydata->disk->isnew )
+        gros_make_fs( mydata->disk );
+
     return mydata;
 }
 
 // Called when the filesystem exits. The private_data comes from the return value of init.
 void grosfs_destroy( void * private_data ) {
     pdebug << "in grosfs_destroy" << std::endl;
-    struct fusedata * mydata = (struct fusedata *) private_data;
+    struct fusedata * mydata = ( struct fusedata * ) private_data;
     gros_close_disk( mydata->disk );
     return;
 }
@@ -38,10 +38,9 @@ void grosfs_destroy( void * private_data ) {
 // much required for a usable filesystem.
 int grosfs_getattr( const char * path, struct stat * stbuf ) {
     pdebug << "in grosfs_getattr ( \"" << path << "\" )" << std::endl;
-    struct fuse_context * ctxt;
     int                   inode_num;
-    ctxt = fuse_get_context();
-    struct fusedata * mydata = ( struct fusedata * ) ctxt->private_data;
+    struct fuse_context * ctxt   = fuse_get_context();
+    struct fusedata     * mydata = ( struct fusedata * ) ctxt->private_data;
 
     std::memset(stbuf, 0, sizeof(struct stat));
 
@@ -66,12 +65,12 @@ int grosfs_access( const char * path, int mask ) {
     return 0;
 
     struct fuse_context * ctxt;
-    int inode_num;
-    short r_ok, w_ok, x_ok;
-    short usr, grp, uni;
-    Inode * inode;
-    ctxt = fuse_get_context();
-    struct fusedata * mydata = ( struct fusedata * ) ctxt->private_data;
+    int                   inode_num;
+    short                 r_ok, w_ok, x_ok;
+    short                 usr, grp, uni;
+    Inode               * inode;
+    ctxt                         = fuse_get_context();
+    struct fusedata     * mydata = ( struct fusedata * ) ctxt->private_data;
 
     inode_num = gros_namei( mydata->disk, path );
     if( inode_num < 0 ) return -ENOENT;
@@ -120,15 +119,15 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
     return 0;
 }
 
-// Open a directory for reading.
+// Open a directory for reading. Check for proper permissions
 int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_opendir" << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    Inode    * inode = gros_get_inode( mydata->disk, gros_namei( mydata->disk, path ) );
-    if ( inode == NULL || inode->f_links == 0) 
-    	return -ENOENT;
-    if ( !gros_is_dir( inode->f_acl ) )
-    	return -ENOTDIR;
+    Inode           * inode  = gros_get_inode( mydata->disk,
+                                               gros_namei( mydata->disk, path ) );
+
+    if( inode == NULL || inode->f_links == 0 ) return -ENOENT;
+    if( ! gros_is_dir( inode->f_acl ) ) return -ENOTDIR;
     return 0;
 }
 
@@ -141,7 +140,6 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
 int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_readdir ( \"" << path << "\", " << offset << " )" << std::endl;
-
     struct fuse_context * ctxt = fuse_get_context();
     struct fusedata *mydata = (struct fusedata *)ctxt->private_data;
     struct stat *stbuf;
@@ -237,10 +235,10 @@ int grosfs_rmdir( const char * path ) {
 // symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
 int grosfs_symlink( const char * to, const char * from ) {
     pdebug << "in grosfs_symlink ( " << to << ", " << from << " ) " << std::endl;
-    const char * filename = strrchr( from, '/' ) + 1;
-    int          length   = ( int ) ( strlen( from ) - strlen( filename ) );
-    char       * dirname  = new char[ length ];
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    const char      * filename = strrchr( from, '/' ) + 1;
+    int               length   = ( int ) ( strlen( from ) - strlen( filename ) );
+    char            * dirname  = new char[ length ];
+    struct fusedata * mydata   = ( struct fusedata * ) fuse_get_context()->private_data;
 
     strncpy( dirname, from, ( size_t ) length + 1 );
     dirname[length-1] = '\0';
@@ -330,12 +328,12 @@ int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
 int grosfs_truncate( const char * path, off_t size ) {
     pdebug << "in grosfs_truncate ( \"" << path << "\", " << size << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    return gros_truncate( mydata->disk, path, size );
+    return gros_truncate( mydata->disk, path, ( int ) size );
 }
 
 
 // As truncate, but called when ftruncate(2) is called by the user program.
-int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi ) {
+int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_ftruncate ( \"" << path << "\", " << size << " ) " << std::endl;
     return grosfs_truncate( path, size );
 }
@@ -349,11 +347,11 @@ int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info *fi )
 // isn't necessary but is nice to have in a fully functional filesystem.
 int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
     pdebug << "in grosfs_utimens ( \"" << path << "\" ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    int      inode_num = gros_namei( mydata->disk, path );
-    Inode * inode      = gros_get_inode( mydata->disk, inode_num );
-    inode->f_atime     = ts[ 0 ].tv_sec * 1000 + ts[ 0 ].tv_nsec * 1000000;
-    inode->f_mtime     = ts[ 1 ].tv_sec * 1000 + ts[ 1 ].tv_nsec * 1000000;
+    struct fusedata * mydata    = ( struct fusedata * ) fuse_get_context()->private_data;
+    int               inode_num = gros_namei( mydata->disk, path );
+    Inode           * inode     = gros_get_inode( mydata->disk, inode_num );
+    inode->f_atime              = ts[ 0 ].tv_sec * 1000 + ts[ 0 ].tv_nsec * 1000000;
+    inode->f_mtime              = ts[ 1 ].tv_sec * 1000 + ts[ 1 ].tv_nsec * 1000000;
     gros_save_inode( mydata->disk, inode );
 
     delete inode;
@@ -361,18 +359,18 @@ int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
 }
 
 
-// Open a file. If you aren't using file handles, this function should just check
-// for existence and permissions and return either success or an error code.
-// If you use file handles, you should also allocate any necessary structures
-// and set fi->fh. In addition, fi has some other fields that an advanced filesystem
-// might find useful; see the structure definition in fuse_common.h for very brief commentary.
+// Open a file. If you aren't using file handles, this function should check for
+// existence and permissions and return either success or error code. If you use
+// file handles, you should also allocate any necessary structures and set fi->fh.
+// In addition, fi has some other fields that an advanced filesystem might find
+// useful; see the structure definition in fuse_common.h for very brief commentary.
 int grosfs_open( const char * path, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_open ( \"" << path << "\" ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
 
-    int     inode_num;
-    int     mode  = 0;
-    Inode * inode = NULL;
+    int               inode_num;
+    int               mode   = 0;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    Inode           * inode  = NULL;
 
     inode_num = gros_namei( mydata->disk, path );
     if( inode_num > 0 )
@@ -417,8 +415,8 @@ int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
     if( fi->fh == 0 )
         fi->fh = ( uint64_t ) gros_namei( mydata->disk, path );
 
-    return gros_i_read( mydata->disk, gros_get_inode( mydata->disk, ( int ) fi->fh ), buf,
-                        ( int ) size, ( int ) offset );
+    return gros_i_read( mydata->disk, gros_get_inode( mydata->disk, ( int ) fi->fh ),
+                        buf, ( int ) size, ( int ) offset );
 }
 
 
@@ -442,20 +440,20 @@ int grosfs_write( const char * path, const char * buf, size_t size, off_t offset
 int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
     pdebug << "in grosfs_statfs ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    Superblock  * sb  = new Superblock();
+    Superblock      * sb     = new Superblock();
     gros_read_block( mydata->disk, 0, ( char * ) sb );
 
-    stbuf->f_bsize   = ( unsigned long ) sb->fs_block_size;          /* file system block size */
-    stbuf->f_frsize  = 0;                                            /* fragment size */
-    stbuf->f_blocks  = ( fsblkcnt_t ) sb->fs_num_blocks;             /* size of fs in f_frsize units */
+    stbuf->f_bsize   = ( unsigned long ) sb->fs_block_size; /* file system block size */
+    stbuf->f_frsize  = 0;                                   /* fragment size */
+    stbuf->f_blocks  = ( fsblkcnt_t ) sb->fs_num_blocks;    /* size of fs in f_frsize units */
     stbuf->f_bfree   = ( fsblkcnt_t ) ( sb->fs_num_blocks - sb->fs_num_used_blocks );   /* # free blocks */
     stbuf->f_bavail  = ( fsblkcnt_t ) ( sb->fs_num_blocks - sb->fs_num_used_blocks );   /* # free blocks for unprivileged users */
-    stbuf->f_files   = ( fsfilcnt_t ) sb->fs_num_inodes;             /* # inodes */
+    stbuf->f_files   = ( fsfilcnt_t ) sb->fs_num_inodes;    /* # inodes */
     stbuf->f_ffree   = ( fsfilcnt_t ) ( sb->fs_num_inodes - sb->fs_num_used_inodes );   /* # free inodes */
     stbuf->f_favail  = ( fsfilcnt_t ) ( sb->fs_num_inodes - sb->fs_num_used_inodes );   /* # free inodes for unprivileged users */
-    stbuf->f_fsid    = 0;                                            /* file system ID */
-    stbuf->f_flag    = 0;                                            /* mount flags */
-    stbuf->f_namemax = FILENAME_MAX_LENGTH;                          /* maximum filename length */
+    stbuf->f_fsid    = 0;                                   /* file system ID */
+    stbuf->f_flag    = 0;                                   /* mount flags */
+    stbuf->f_namemax = FILENAME_MAX_LENGTH;                 /* maximum filename length */
 
     delete sb;
     return 0;
@@ -654,8 +652,7 @@ int grosfs_ioctl( const char * path, int cmd, void * arg,
     if (flags & FUSE_IOCTL_COMPAT)
         return -ENOSYS;
 
-/*
-    switch( dir ) {
+/*    switch( dir ) {
         case _IOR('E', 0, size_t):
             grosfs_read( path, ( char * ) data, ( size_t ) size, 0, fi );
         case _IOW('E', 1, size_t):
@@ -664,8 +661,7 @@ int grosfs_ioctl( const char * path, int cmd, void * arg,
 //            // TODO what to do here?
         default:
             return -EINVAL;
-    }
-*/
+    }*/
 
     return 0;
 }
@@ -684,7 +680,7 @@ int grosfs_poll( const char * path, struct fuse_file_info * fi,
 
 int grosfs_create( char const * path, mode_t mode, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_create ( \"" << path << "\", " << mode << " ) " << std::endl;
-    return grosfs_mknod(path, mode, 0);
+    return grosfs_mknod( path, mode, 0 );
 }
 
 

@@ -47,9 +47,9 @@ int gros_namei( Disk * disk, const char * path ) {
     DirEntry * direntry = NULL;
     DirEntry * tmp = NULL;
 
-    if ( ! strcmp( path, "/" ) || ! strcmp( path, "" )) {
+    // check for valid path
+    if ( ! strcmp( path, "/" ) || ! strcmp( path, "" ) )
         return 0;
-    }
 
     const char * target = strrchr( path, '/' ) + 1; // get filename this way
 
@@ -73,13 +73,10 @@ int gros_namei( Disk * disk, const char * path ) {
             direntry = tmp;
         }
     }
-
-    if ( ! direntry ) return -1;
-    if ( ! strcmp( direntry->filename, target ) ) {
+    if ( ! direntry || ! strcmp( direntry->filename, target ) )
         return dir->f_inode_num;
-    } else {
+    else
         return -1;
-    }
 }
 
 

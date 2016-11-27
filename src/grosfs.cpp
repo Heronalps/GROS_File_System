@@ -299,8 +299,6 @@ void gros_fsck( Disk * disk ) {
 }
 
 
-
-
 // TODO test function, possible memory leaks
 /**
  * Finds path from root to inode, backwards
@@ -498,11 +496,12 @@ Inode * gros_find_free_inode( Disk * disk ) {
         if( i == SB_ILIST_SIZE - 1 )
             gros_repopulate_ilist( disk, free_inode_index );
     }
+    superblock->fs_num_used_inodes++;
 
     // save the superblock to disk with updated free ilist
     gros_write_block( disk, 0, ( char * ) superblock );
 
-    // otherwise, return that inode.
+    // return inode
     return gros_get_inode( disk, free_inode_index );
 }
 
@@ -830,11 +829,16 @@ int gros_allocate_data_block( Disk * disk ) {
             // mark the data block as not free
             gros_set_bit( bitmap, bitmap_index );
             gros_write_block( disk, block_num, buf );
-            return block_num + bitmap_index; // block num for free block
+            // update superblock
+            superblock->fs_num_used_blocks++;
+            gros_write_block( disk, 0, ( char * ) superblock );
+            // return free block number
+            return block_num + bitmap_index;
         }
     }
     return -1;    // no blocks available
 }
+
 
 int gros_is_file( short acl ) {
     int first_bit  = acl & 1;
@@ -842,6 +846,7 @@ int gros_is_file( short acl ) {
 
     return ( first_bit == 0 && second_bit == 0 );
 }
+
 
 int gros_is_dir( short acl ) {
     int first_bit  = acl & 1;
