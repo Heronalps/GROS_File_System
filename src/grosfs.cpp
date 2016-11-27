@@ -855,6 +855,13 @@ int gros_is_dir( short acl ) {
     return ( first_bit == 1 && second_bit == 0 );
 }
 
+int gros_is_symlink( short acl ) {
+    int first_bit  = acl & 1;
+    int second_bit = ( ( acl & 2 ) >> 1 );
+
+    return ( first_bit == 0 && second_bit == 1 );
+}
+
 
 TEST_CASE( "OS File System can be properly created", "[FileSystem]" ) {
     int i, j, k;

@@ -263,4 +263,7 @@ int gros_is_file( short acl );
 int gros_is_dir( short acl );
 
 
+int gros_is_symlink( short acl );
+
+
 #endif

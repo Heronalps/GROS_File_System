@@ -99,17 +99,19 @@ int grosfs_access( const char * path, int mask ) {
     return 0;
 }
 
-// If path is a symbolic link, fill buf with its target, up to size. See
-// readlink(2) for how to handle a too-small buffer and for error codes. Not
-// required if you don't support symbolic links. NOTE: Symbolic-link support
-// requires only readlink and symlink. FUSE itself will take care of tracking
-// symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
+
+// If path is symbolic link, fill buf with its target, up to size. See readlink(2)
+// for how to handle a too-small buffer and for error codes. Not required if you
+// don't support symbolic links. NOTE: Symbolic-link support requires only
+// readlink and symlink. FUSE itself will take care of tracking symbolic links
+// in paths, so your path-evaluation code doesn't need to worry about it.
 int grosfs_readlink( const char * path, char * buf, size_t size ) {
     pdebug << "in grosfs_readlink" << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    Inode    * inode = gros_get_inode( mydata->disk, gros_namei( mydata->disk, path ) );
-    int first_bit  = inode->f_acl & 1;
-    int second_bit = ( ( inode->f_acl & 2 ) >> 1 );
+    struct fusedata * mydata     = ( struct fusedata * ) fuse_get_context()->private_data;
+    Inode           * inode      = gros_get_inode( mydata->disk, gros_namei( mydata->disk, path ) );
+    int               first_bit  = inode->f_acl & 1;
+    int               second_bit = ( ( inode->f_acl & 2 ) >> 1 );
+
     if ( first_bit == 0 || second_bit == 0 || size < 1 )
     	return -EINVAL;
     if( ( inode == NULL || inode->f_links == 0 ) ) 
@@ -119,7 +121,8 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
     return 0;
 }
 
-// Open a directory for reading. Check for proper permissions
+
+// Open a directory for reading.
 int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_opendir" << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
@@ -130,6 +133,7 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
     if( ! gros_is_dir( inode->f_acl ) ) return -ENOTDIR;
     return 0;
 }
+
 
 // Return one or more directory entries (struct dirent) to the caller.
 // This is one of the most complex FUSE functions. It is related to, but not
@@ -176,6 +180,7 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
     return 0;
 }
 
+
 // Make a special (device) file, FIFO, or socket. See mknod(2) for details.
 // This function is rarely needed, since it's uncommon to make these objects
 // inside special-purpose filesystems.
@@ -201,6 +206,7 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
     return 0;
 }
 
+
 // Create a directory with the given name. The directory permissions are encoded
 // in mode. See mkdir(2) for details. This function is needed for any reasonable
 // read/write filesystem.
@@ -212,6 +218,7 @@ int grosfs_mkdir( const char * path, mode_t mode ) {
     return gros_mkdir( mydata->disk, path ) > 0 ? 0 : -1;
 }
 
+
 // Remove (delete) the given file, symbolic link, hard link, or special node.
 // Note that if you support hard links, unlink only deletes the data when the
 // last hard link is removed. See unlink(2) for details.
@@ -221,6 +228,7 @@ int grosfs_unlink( const char * path ) {
     return gros_unlink( mydata->disk, path );
 }
 
+
 // Remove the given directory. This should succeed only if the directory is empty
 // (except for "." and ".."). See rmdir(2) for details.
 int grosfs_rmdir( const char * path ) {
@@ -228,6 +236,7 @@ int grosfs_rmdir( const char * path ) {
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_rmdir( mydata->disk, path );
 }
+
 
 // Create a symbolic link named "from" which, when evaluated, will lead to "to".
 // Not required if you don't support symbolic links. NOTE: Symbolic-link support
