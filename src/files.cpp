@@ -62,7 +62,7 @@ int gros_namei( Disk * disk, const char * path ) {
             filename = strtok( NULL, "/" );
         }
     }
-    free( filename );
+//    free( filename );
     if( ! dir -> f_inode_num )
         return -1;
     return dir -> f_inode_num;

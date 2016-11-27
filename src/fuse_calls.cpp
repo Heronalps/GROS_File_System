@@ -40,7 +40,7 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     pdebug << "in grosfs_getattr" << std::endl;
     struct fuse_context * ctxt;
     int                   inode_num;
-    short                 usr, grp, uni;
+    short                 ftyp, usr, grp, uni;
     Inode               * inode;
     ctxt = fuse_get_context();
     struct fusedata * mydata = ( struct fusedata * ) ctxt->private_data;
@@ -51,11 +51,22 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     if( inode_num < 0 ) return -ENOENT;
 
     inode = gros_get_inode( mydata->disk, inode_num );
-    usr   = ( short ) ( inode->f_acl & 0x7 );
+    ftyp  = ( short ) ( ( inode->f_acl >> 9 ) & 0x4 );
+    usr   = ( short ) ( ( inode->f_acl >> 6 ) & 0x7 );
     grp   = ( short ) ( ( inode->f_acl >> 3 ) & 0x7 );
-    uni   = ( short ) ( ( inode->f_acl >> 6 ) & 0x7 );
+    uni   = ( short ) ( inode->f_acl & 0x7 );
 
-    stbuf->st_mode = 0;
+    switch ( ftyp ) {
+        case 0: // regular file
+            stbuf->st_mode = S_IFREG;
+        case 1: // directory
+            stbuf->st_mode = S_IFDIR;
+        case 2: // device
+            stbuf->st_mode = S_IFBLK;
+        case 3: default: // symlink
+            stbuf->st_mode = S_IFLNK;
+    }
+
     // user
     stbuf->st_mode = ( mode_t ) ( ( usr & 0x4 ) ? stbuf->st_mode | S_IRUSR : stbuf->st_mode );
     stbuf->st_mode = ( mode_t ) ( ( usr & 0x2 ) ? stbuf->st_mode | S_IWUSR : stbuf->st_mode );
