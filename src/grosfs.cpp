@@ -587,6 +587,7 @@ Inode * gros_get_inode( Disk * disk, int inode_num ) {
     gros_read_block( disk, 0, ( char * ) superblock );
     inodes_per_block = ( int ) floor( 1.0f*superblock->fs_block_size
                                       / superblock->fs_inode_size );
+    delete superblock;
     block_num       = 1+inode_num / inodes_per_block;
     rel_inode_index = inode_num % inodes_per_block;
 

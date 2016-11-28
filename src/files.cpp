@@ -23,13 +23,14 @@ void gros_mkroot( Disk * disk ) {
     root_i->f_links = 2;
 
     root[ 0 ].inode_num = root_i->f_inode_num;
-    strcpy( root[ 0 ].filename, "." );
+    strncpy( root[ 0 ].filename, ".", strlen(".")+1 );
 
     root[ 1 ].inode_num = root_i->f_inode_num;
-    strcpy( root[ 1 ].filename, ".." );
+    strncpy( root[ 1 ].filename, "..", strlen(".")+1 );
 
-    gros_i_write( disk, root_i, ( char * ) root, 2 * sizeof( DirEntry ), 0 );
     gros_save_inode( disk, root_i );
+    gros_i_write( disk, root_i, ( char * ) &(root[0]), sizeof( DirEntry ), 0 );
+    gros_i_write( disk, root_i, ( char * ) &(root[1]), sizeof( DirEntry ), sizeof( DirEntry ) );
     delete root_i;
 }
 
@@ -94,9 +95,9 @@ int gros_i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) 
     int          cur_di     = -1;    /* id of blocks last gros_read into diblock */
     int          si         = -1;    /* id of siblock that we need */
     int          di         = -1;    /* id of diblock that we need */
-    int        * siblock;            /* buffer to store indirects */
-    int        * diblock;            /* buffer to store indirects */
-    int        * tiblock;            /* buffer to store indirects */
+    int        * siblock = NULL;     /* buffer to store indirects */
+    int        * diblock = NULL;     /* buffer to store indirects */
+    int        * tiblock = NULL;     /* buffer to store indirects */
     Superblock * superblock = new Superblock(); /* reference to a superblock */
 
     file_size = inode->f_size;
@@ -122,7 +123,7 @@ int gros_i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) 
 
     // while we have more bytes in the file to read and have not gros_read the
     // requested amount of bytes
-    while( ( offset + bytes_read ) <= file_size && bytes_read <= size ) {
+    while( ( offset + bytes_read ) < file_size && bytes_read < size ) {
         // for this block, we either finish reading or gros_read the entire block
         bytes_to_read = std::min( size - bytes_read, block_size );
         // tmp var to store index into indirect blocks if necessary
@@ -235,10 +236,11 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
     int          si_index      = -1;   /* index into siblock for data */
     int          di_index      = -1;   /* index into diblock for siblock */
     int          ti_index      = -1;   /* index into tiblock for diblock */
-    int        * siblock;
-    int        * diblock;
-    int        * tiblock;              /* buffers to store indirects */
+    int        * siblock = NULL;
+    int        * diblock = NULL;
+    int        * tiblock = NULL;       /* buffers to store indirects */
     Superblock * superblock = new Superblock(); /* reference to a superblock */
+    Inode      * tosave;
 
     file_size = inode->f_size;
     // by default, the double indirect block we gros_write to is the one given in the
@@ -248,9 +250,12 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
     // inode. this will change if we are in the double indirect block
     si = inode->f_block[ SINGLE_INDRCT ];
 
-    // if we don't have to write, don't gros_write. ¯\_(ツ)_/¯
-    if( size <= 0 || offset >= file_size )
+    // if we don't have to write, don't write. ¯\_(ツ)_/¯
+    if( size <= 0 )
         return 0;
+
+    // if we're writing to some offset, make sure it's that size
+    gros_i_ensure_size(disk, inode, offset);
 
     // get the superblock so we can get the data we need about the file system
     gros_read_block( disk, 0, (char *) superblock );
@@ -264,7 +269,7 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
     cur_block      = offset / block_size;
 
     // while we have more bytes to gros_write
-    while( bytes_written <= size ) {
+    while( bytes_written < size ) {
         // for this block, we either finish writing or gros_write an entire block
         bytes_to_write = std::min( size - bytes_written, block_size );
         // tmp var to store index into indirect blocks if necessary
@@ -438,9 +443,10 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
                         std::max( inode->f_block[ SINGLE_INDRCT ], 0 ) *
                         n_indirects +
                         // direct blocks
-                        std::min( cur_block, SINGLE_INDRCT )
+                        std::min<int>( std::min( cur_block - 1, 0), SINGLE_INDRCT )
                 ) * block_size
         );
+        tosave = gros_get_inode(disk, inode->f_inode_num);
 
         // we're in a single indirect block and the data block hasn't been allocated
         if( si_index != -1 && block_to_write == -1 ) {
@@ -452,9 +458,9 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
         // in a direct block
         if( cur_block < SINGLE_INDRCT ) {
             block_to_write = inode->f_block[ cur_block ];
-            if( inode->f_block[ cur_block ] == -1 ) {
-                inode->f_block[ cur_block ] = gros_allocate_data_block( disk );
-                block_to_write = inode->f_block[ cur_block ];
+            if( tosave->f_block[ cur_block ] == -1 ) {
+                tosave->f_block[ cur_block ] = gros_allocate_data_block( disk );
+                block_to_write = tosave->f_block[ cur_block ];
             }
         }
 
@@ -468,14 +474,14 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
         bytes_written += bytes_to_write;
 
         if( bytes_to_write < block_size ) {
-            inode->f_size = std::max(
+            tosave->f_size = std::max(
                     // if we didn't gros_write to the end of the file
-                    inode->f_size,
+                    tosave->f_size,
                     // if we wrote past the end of the file
-                    inode->f_size - ( inode->f_size % block_size ) +
+                    tosave->f_size - ( tosave->f_size % block_size ) +
                     bytes_to_write
             );
-            gros_save_inode( disk, inode );
+            gros_save_inode( disk, tosave );
         }
 
         cur_block++;
