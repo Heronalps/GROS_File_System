@@ -202,7 +202,7 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
 int grosfs_mkdir( const char * path, mode_t mode ) {
     pdebug << "in grosfs_mkdir ( \"" << path << "\", " << mode << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    return gros_mkdir( mydata->disk, path );
+    return gros_mkdir( mydata->disk, path ) > 0 ? 0 : -1;
 }
 
 // Remove (delete) the given file, symbolic link, hard link, or special node.

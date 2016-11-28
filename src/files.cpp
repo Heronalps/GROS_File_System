@@ -737,15 +737,26 @@ int gros_i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode ) {
 int gros_rmdir( Disk * disk, const char * path ) {
     const char * dirname     = strrchr( path, '/' ) + 1;
     int          length      = ( int ) ( strlen( path ) - strlen( dirname ) );
-    char       * parent_path = new char[ length ];
+    char       * parent_path = new char[ length + 1 ];
     int          parent_num;
+    int          inode_num;
+
+    inode_num = gros_namei( disk, path );
+    if (inode_num < 0) {
+        return 0;
+    }
 
     strncpy( parent_path, path, ( size_t ) length + 1 );
+    parent_path[ length ] = '\0';
     parent_num = gros_namei( disk, parent_path );
+
+    if (parent_num < 0) {
+        return 0;
+    }
 
     delete [] parent_path;
     return gros_i_rmdir( disk, gros_get_inode( disk, parent_num ),
-                         gros_get_inode( disk, gros_namei( disk, path ) ) );
+                         gros_get_inode( disk, inode_num ) );
 }
 
 
