@@ -582,7 +582,10 @@ int gros_i_mknod( Disk * disk, Inode * inode, const char * filename ) {
     direntry->inode_num = new_file->f_inode_num;
     strcpy( direntry->filename, filename );
 
-    gros_save_inode( disk, new_file ) < 1 ? status = -1 : status;
+    if ( gros_save_inode( disk, new_file ) < 1 ) {
+        gros_free_inode( disk, new_file );
+        return -1;
+    }
     gros_i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
                   inode->f_size );
 
@@ -640,7 +643,10 @@ int gros_i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
 
     // save directories back to disk
     gros_save_inode( disk, inode ) < 0 ? status = -1 : status;
-    gros_save_inode( disk, new_dir ) < 0 ? status = -1 : status;
+    if (gros_save_inode( disk, new_dir ) < 0) {
+        gros_free_inode( disk, new_dir );
+        return -1;
+    }
 
     // add new direntry to current directory
     gros_i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
@@ -650,6 +656,8 @@ int gros_i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
     gros_i_write( disk, new_dir, ( char * ) entries, 2 * sizeof( DirEntry ), 0 );
 
     delete direntry;
+    status = new_dir->f_inode_num;
+    delete new_dir;
     return status;
 }
 
@@ -784,10 +792,11 @@ int gros_i_unlink( Disk * disk, Inode * inode, const char * filename ) {
 int gros_unlink( Disk * disk, const char * path ) {
     const char * filename    = strrchr( path, '/' ) + 1;
     int          length      = ( int ) ( strlen( path ) - strlen( filename ) );
-    char       * parent_path = new char[ length ];
+    char       * parent_path = new char[ length + 1 ];
     int          parent_num;
 
     strncpy( parent_path, path, ( size_t ) length + 1 );
+    parent_path[length] = '\0';
     parent_num = gros_namei( disk, parent_path );
 
     delete [] parent_path;
@@ -828,9 +837,9 @@ int gros_i_truncate( Disk * disk, Inode * inode, int size ) {
     int          si_index     = -1;  /* index into siblock for data */
     int          di_index     = -1;  /* index into diblock for siblock */
     int          ti_index     = -1;  /* index into tiblock for diblock */
-    int        * siblock;            /* buffer to store indirects */
-    int        * diblock;            /* buffer to store indirects */
-    int        * tiblock;            /* buffer to store indirects */
+    int        * siblock = NULL;     /* buffer to store indirects */
+    int        * diblock = NULL;     /* buffer to store indirects */
+    int        * tiblock = NULL;     /* buffer to store indirects */
     Superblock * superblock = new Superblock(); /* reference to a superblock */
 
     file_size = inode->f_size;

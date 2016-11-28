@@ -188,6 +188,10 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
     inode->f_acl = ( short ) ( ( mode & S_IWOTH) ? inode->f_acl | (1 << 1) : inode->f_acl );
     inode->f_acl = ( short ) ( ( mode & S_IXOTH) ? inode->f_acl | (1 << 0) : inode->f_acl );
 
+    inode->f_atime = time(NULL);
+    inode->f_ctime = time(NULL);
+    inode->f_mtime = time(NULL);
+
     gros_save_inode(mydata->disk, inode);
     return 0;
 }
