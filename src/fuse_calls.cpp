@@ -130,6 +130,7 @@ int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_in
 // that appears in the filesystem. This call is not required but is highly recommended.
 int grosfs_access( const char * path, int mask ) {
     pdebug << "in grosfs_access ( \"" << path << "\", " << mask << " ) " << std::endl;
+    return 0;
 
     struct fuse_context * ctxt;
     int inode_num;
@@ -230,7 +231,28 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
     pdebug << "in grosfs_mknod ( \"" << path << "\", " << mode << ", " << rdev << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    return gros_mknod( mydata->disk, path );
+
+    int inode_num = gros_mknod(mydata->disk, path);
+    if (inode_num < 0)
+        return -EIO;
+    Inode * inode = gros_get_inode(mydata->disk, inode_num);
+    inode->f_acl = 0; // regular file
+
+    // user
+    inode->f_acl = ( short ) ( ( mode & S_IRUSR) ? inode->f_acl | (1 << 8) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IWUSR) ? inode->f_acl | (1 << 7) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IXUSR) ? inode->f_acl | (1 << 6) : inode->f_acl );
+    // group
+    inode->f_acl = ( short ) ( ( mode & S_IRGRP) ? inode->f_acl | (1 << 5) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IWGRP) ? inode->f_acl | (1 << 4) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IXGRP) ? inode->f_acl | (1 << 3) : inode->f_acl );
+    // universe
+    inode->f_acl = ( short ) ( ( mode & S_IROTH) ? inode->f_acl | (1 << 2) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IWOTH) ? inode->f_acl | (1 << 1) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IXOTH) ? inode->f_acl | (1 << 0) : inode->f_acl );
+
+    gros_save_inode(mydata->disk, inode);
+    return 0;
 }
 
 // Create a directory with the given name. The directory permissions are encoded

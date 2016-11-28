@@ -587,6 +587,9 @@ int gros_i_mknod( Disk * disk, Inode * inode, const char * filename ) {
                   inode->f_size );
 
     delete direntry;
+    if (status != 0) return status;
+    status = new_file->f_inode_num;
+    delete new_file;
     return status;
 }
 
