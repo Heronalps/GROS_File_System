@@ -194,8 +194,7 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 
     struct fuse_context * ctxt = fuse_get_context();
     struct fusedata *mydata = (struct fusedata *)ctxt->private_data;
-    int i = 0;
-    int off, full = 0;
+    int i = 0, full = 0, off = 0;
     int inode_num = gros_namei(mydata->disk, path);
     // if we couldn't find the directory, error
     if (inode_num < 0) {
@@ -208,16 +207,17 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
     gros_readdir_r(mydata->disk, inode, NULL, &ent);
 
     // advance to the direntry after `offset` given from params
-    while (ent != NULL && i < (offset / sizeof(DirEntry))) {
+    while (ent != NULL && off < offset) {
         gros_readdir_r(mydata->disk, inode, ent, &tmp);
-        i++;
+        off += ((24+strlen(ent->filename)+7)&~7);
+        ent = tmp;
     }
 
     while (ent != NULL && full != 1) {
         // get the next direntry and put it into tmp
         gros_readdir_r(mydata->disk, inode, ent, &tmp);
         // if there are no more direntries, off = 0, else offset is to next
-        off = tmp == NULL ? 0 : (i) * sizeof(DirEntry);
+        off = tmp == NULL ? 0 : ((24+strlen(ent->filename)+7)&~7);
         // full will be 1 if the buffer is full
         full = filler(buf, ent->filename, NULL, off);
         // signal we're moving on
