@@ -128,7 +128,9 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 
     struct fuse_context * ctxt = fuse_get_context();
     struct fusedata *mydata = (struct fusedata *)ctxt->private_data;
-    int full = 0, off = 0;
+    struct stat *stbuf;
+    int full = 0;
+    size_t off = 0;
     int inode_num = gros_namei(mydata->disk, path);
     // if we couldn't find the directory, error
     if (inode_num < 0) {
@@ -149,8 +151,10 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
             ent = tmp;
             continue;
         }
+        stbuf = new struct stat();
+        grosfs_i_stat(mydata->disk, ent->inode_num, stbuf);
         // full will be 1 if the buffer is full
-        full = filler(buf, ent->filename, NULL, off);
+        full = filler( buf, ent->filename, stbuf, ( off_t ) off );
         // tmp is the new current entry
         ent = tmp;
     }
