@@ -45,7 +45,7 @@ int gros_namei( Disk * disk, const char * path ) {
     Inode    * dir;
     DirEntry * direntry = NULL;
 
-    if ( ! strcmp( path, "/" ) ) {
+    if ( ! strcmp( path, "/" ) || ! strcmp( path, "" )) {
         return 0;
     }
 
@@ -97,7 +97,7 @@ int gros_i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) 
     int        * siblock;            /* buffer to store indirects */
     int        * diblock;            /* buffer to store indirects */
     int        * tiblock;            /* buffer to store indirects */
-    Superblock * superblock;         /* reference to a superblock */
+    Superblock * superblock = new Superblock(); /* reference to a superblock */
 
     file_size = inode->f_size;
     // by default, the double indirect block we gros_read from is the one given in
@@ -112,8 +112,7 @@ int gros_i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) 
         return 0;
 
     // get the superblock so we can get the data we need about the file system
-    gros_read_block( disk, 0, data );
-    superblock      = ( Superblock * ) data;
+    gros_read_block( disk, 0, ( char * ) superblock );
     block_size      = superblock->fs_block_size;
     // the number of indirects a block can have
     n_indirects     = block_size / sizeof( int );
@@ -239,7 +238,7 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
     int        * siblock;
     int        * diblock;
     int        * tiblock;              /* buffers to store indirects */
-    Superblock * superblock;           /* reference to a superblock */
+    Superblock * superblock = new Superblock(); /* reference to a superblock */
 
     file_size = inode->f_size;
     // by default, the double indirect block we gros_write to is the one given in the
@@ -254,8 +253,7 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
         return 0;
 
     // get the superblock so we can get the data we need about the file system
-    gros_read_block( disk, 0, data );
-    superblock     = ( Superblock * ) data;
+    gros_read_block( disk, 0, (char *) superblock );
     block_size     = superblock->fs_block_size;
 
     // the number of indirects a block can have
@@ -798,7 +796,7 @@ int gros_i_truncate( Disk * disk, Inode * inode, int size ) {
     int        * siblock;            /* buffer to store indirects */
     int        * diblock;            /* buffer to store indirects */
     int        * tiblock;            /* buffer to store indirects */
-    Superblock * superblock;         /* reference to a superblock */
+    Superblock * superblock = new Superblock(); /* reference to a superblock */
 
     file_size = inode->f_size;
     // by default, the double indirect block we read from is the one given in
@@ -816,8 +814,7 @@ int gros_i_truncate( Disk * disk, Inode * inode, int size ) {
     offset = size;
 
     // get the superblock so we can get the data we need about the file system
-    gros_read_block( disk, 0, data );
-    superblock      = ( Superblock * ) data;
+    gros_read_block( disk, 0, (char*) superblock );
     block_size      = superblock->fs_block_size;
     // the number of indirects a block can have
     n_indirects     = block_size / sizeof( int );
@@ -983,22 +980,22 @@ int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
     int         direntrysize = sizeof( DirEntry );
     int         status       = 1;
     int         offset       = 0;
-    char        data[ direntrysize ];
-    char        next[ direntrysize ];
+    DirEntry *cur_de = new DirEntry();
+    DirEntry *next_de = new DirEntry();
 
     if( ! current ) {
-        gros_i_read( disk, dir, data, direntrysize, offset );
-        * result = ( DirEntry * ) data;
+        gros_i_read( disk, dir, ( char * ) cur_de, direntrysize, offset );
+        * result = cur_de;
         status = 0;
     }
 
     // read DirEntries until current entry is found
-    while( status && gros_i_read( disk, dir, data, direntrysize, offset ) ) {
+    while( status && gros_i_read( disk, dir, ( char * ) cur_de, direntrysize, offset ) ) {
         offset += direntrysize;
-        if( ( DirEntry * ) data == current ) {
+        if( cur_de == current ) {
             status = 0;
-            if( gros_i_read( disk, dir, next, direntrysize, offset ) )
-                * result = ( DirEntry * ) next;
+            if( gros_i_read( disk, dir, ( char * ) next_de, direntrysize, offset ) )
+                * result = next_de;
             else * result = NULL;
         }
     }
