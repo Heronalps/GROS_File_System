@@ -40,8 +40,6 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     pdebug << "in grosfs_getattr ( \"" << path << "\" )" << std::endl;
     struct fuse_context * ctxt;
     int                   inode_num;
-    short                 ftyp, usr, grp, uni;
-    Inode               * inode;
     ctxt = fuse_get_context();
     struct fusedata * mydata = ( struct fusedata * ) ctxt->private_data;
 
@@ -50,72 +48,7 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     inode_num = gros_namei( mydata->disk, path );
     if( inode_num < 0 ) return -ENOENT;
 
-    inode = gros_get_inode( mydata->disk, inode_num );
-    ftyp  = ( short ) ( ( inode->f_acl >> 9 ) & 0x5 );
-    usr   = ( short ) ( ( inode->f_acl >> 6 ) & 0x7 );
-    grp   = ( short ) ( ( inode->f_acl >> 3 ) & 0x7 );
-    uni   = ( short ) ( inode->f_acl & 0x7 );
-
-    switch ( ftyp ) {
-        case 0: // regular file
-            stbuf->st_mode = S_IFREG; break;
-        case 1: // directory
-            stbuf->st_mode = S_IFDIR; break;
-        case 2: // device
-            stbuf->st_mode = S_IFBLK; break;
-        case 3: // symlink
-            stbuf->st_mode = S_IFLNK; break;
-        default:
-            stbuf->st_mode = S_IFREG; break;
-    }
-
-    // user
-    stbuf->st_mode = ( mode_t ) ( ( usr & 0x4 ) ? stbuf->st_mode | S_IRUSR : stbuf->st_mode );
-    stbuf->st_mode = ( mode_t ) ( ( usr & 0x2 ) ? stbuf->st_mode | S_IWUSR : stbuf->st_mode );
-    stbuf->st_mode = ( mode_t ) ( ( usr & 0x1 ) ? stbuf->st_mode | S_IXUSR : stbuf->st_mode );
-    // group
-    stbuf->st_mode = ( mode_t ) ( ( grp & 0x4 ) ? stbuf->st_mode | S_IRGRP : stbuf->st_mode );
-    stbuf->st_mode = ( mode_t ) ( ( grp & 0x2 ) ? stbuf->st_mode | S_IWGRP : stbuf->st_mode );
-    stbuf->st_mode = ( mode_t ) ( ( grp & 0x1 ) ? stbuf->st_mode | S_IXGRP : stbuf->st_mode );
-    // universe
-    stbuf->st_mode = ( mode_t ) ( ( uni & 0x4 ) ? stbuf->st_mode | S_IROTH : stbuf->st_mode );
-    stbuf->st_mode = ( mode_t ) ( ( uni & 0x2 ) ? stbuf->st_mode | S_IWOTH : stbuf->st_mode );
-    stbuf->st_mode = ( mode_t ) ( ( uni & 0x1 ) ? stbuf->st_mode | S_IXOTH : stbuf->st_mode );
-
-    stbuf->st_dev  = 0; // not used
-    stbuf->st_rdev = 0; // not used;
-    stbuf->st_ino  = inode_num;
-    stbuf->st_uid  = ( uid_t ) inode->f_uid;
-    stbuf->st_gid  = ( gid_t ) inode->f_gid;
-
-    pdebug << "setting timing stuff" << std::endl;
-    #if defined(__APPLE__) || defined(__MACH__)
-        struct timespec a, m, c;
-
-        a.tv_sec  = inode->f_atime / 1000;
-        a.tv_nsec = ( inode->f_atime % 1000 ) * 1000000;
-        m.tv_sec  = inode->f_mtime / 1000;
-        m.tv_nsec = ( inode->f_mtime % 1000 ) * 1000000;
-        c.tv_sec  = inode->f_ctime / 1000;
-        c.tv_nsec = ( inode->f_ctime % 1000 ) * 1000000;
-
-        stbuf->st_atimespec = a;
-        stbuf->st_mtimespec = m;
-        stbuf->st_ctimespec = c;
-    #else
-        stbuf->st_atime = inode->f_atime;
-        stbuf->st_mtime = inode->f_mtime;
-        stbuf->st_ctime = inode->f_ctime;
-    #endif
-
-    pdebug << "setting links and size stuff" << std::endl;
-    stbuf->st_nlink   = ( nlink_t ) inode->f_links;
-    stbuf->st_size    = inode->f_size;
-    stbuf->st_blocks  = ( inode->f_size / BLOCK_SIZE ) + 1;
-    stbuf->st_blksize = BLOCK_SIZE;
-
-    pdebug << "returning" << std::endl;
-    return 0;
+    return grosfs_i_stat(mydata->disk, inode_num, stbuf);
 }
 
 // As getattr, but called when fgetattr(2) is invoked by the user program.
@@ -521,6 +454,7 @@ int grosfs_releasedir( const char * path, struct fuse_file_info * fi ) {
 // (slowing performance) but achieve the desired guarantee.
 int grosfs_fsync( const char * path, int isdatasync, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_fsync ( \"" << path << "\", " << isdatasync << " ) " << std::endl;
+    fsync(( ( struct fusedata * ) fuse_get_context()->private_data )->disk->fd);
     return 0; // leave unimplemented
 }
 

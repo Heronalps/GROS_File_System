@@ -1092,3 +1092,74 @@ int gros_copy( Disk * disk, const char * from, const char * to ) {
             filename
     );
 }
+
+int grosfs_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
+    short                 ftyp, usr, grp, uni;
+    Inode               * inode;
+    inode = gros_get_inode( disk, inode_num );
+    ftyp  = ( short ) ( ( inode->f_acl >> 9 ) & 0x5 );
+    usr   = ( short ) ( ( inode->f_acl >> 6 ) & 0x7 );
+    grp   = ( short ) ( ( inode->f_acl >> 3 ) & 0x7 );
+    uni   = ( short ) ( inode->f_acl & 0x7 );
+
+    switch ( ftyp ) {
+        case 0: // regular file
+            stbuf->st_mode = S_IFREG; break;
+        case 1: // directory
+            stbuf->st_mode = S_IFDIR; break;
+        case 2: // device
+            stbuf->st_mode = S_IFBLK; break;
+        case 3: // symlink
+            stbuf->st_mode = S_IFLNK; break;
+        default:
+            stbuf->st_mode = S_IFREG; break;
+    }
+
+    // user
+    stbuf->st_mode = ( mode_t ) ( ( usr & 0x4 ) ? stbuf->st_mode | S_IRUSR : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( usr & 0x2 ) ? stbuf->st_mode | S_IWUSR : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( usr & 0x1 ) ? stbuf->st_mode | S_IXUSR : stbuf->st_mode );
+    // group
+    stbuf->st_mode = ( mode_t ) ( ( grp & 0x4 ) ? stbuf->st_mode | S_IRGRP : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( grp & 0x2 ) ? stbuf->st_mode | S_IWGRP : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( grp & 0x1 ) ? stbuf->st_mode | S_IXGRP : stbuf->st_mode );
+    // universe
+    stbuf->st_mode = ( mode_t ) ( ( uni & 0x4 ) ? stbuf->st_mode | S_IROTH : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( uni & 0x2 ) ? stbuf->st_mode | S_IWOTH : stbuf->st_mode );
+    stbuf->st_mode = ( mode_t ) ( ( uni & 0x1 ) ? stbuf->st_mode | S_IXOTH : stbuf->st_mode );
+
+    stbuf->st_dev  = 0; // not used
+    stbuf->st_rdev = 0; // not used;
+    stbuf->st_ino  = inode_num;
+    stbuf->st_uid  = ( uid_t ) inode->f_uid;
+    stbuf->st_gid  = ( gid_t ) inode->f_gid;
+
+    pdebug << "setting timing stuff" << std::endl;
+#if defined(__APPLE__) || defined(__MACH__)
+    struct timespec a, m, c;
+
+    a.tv_sec  = inode->f_atime / 1000;
+    a.tv_nsec = ( inode->f_atime % 1000 ) * 1000000;
+    m.tv_sec  = inode->f_mtime / 1000;
+    m.tv_nsec = ( inode->f_mtime % 1000 ) * 1000000;
+    c.tv_sec  = inode->f_ctime / 1000;
+    c.tv_nsec = ( inode->f_ctime % 1000 ) * 1000000;
+
+    stbuf->st_atimespec = a;
+    stbuf->st_mtimespec = m;
+    stbuf->st_ctimespec = c;
+#else
+    stbuf->st_atime = inode->f_atime;
+        stbuf->st_mtime = inode->f_mtime;
+        stbuf->st_ctime = inode->f_ctime;
+#endif
+
+    pdebug << "setting links and size stuff" << std::endl;
+    stbuf->st_nlink   = ( nlink_t ) inode->f_links;
+    stbuf->st_size    = inode->f_size;
+    stbuf->st_blocks  = ( inode->f_size / BLOCK_SIZE ) + 1;
+    stbuf->st_blksize = BLOCK_SIZE;
+
+    pdebug << "returning" << std::endl;
+    return 0;
+}
