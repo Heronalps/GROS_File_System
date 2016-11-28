@@ -191,15 +191,42 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
 int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
                   off_t offset, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_readdir ( \"" << path << "\", " << offset << " )" << std::endl;
-    struct stat *root = new struct stat();
-    grosfs_getattr( path, root );
 
-    filler(buf, ".", root, 0);
-    filler(buf, "..", root, 0);
+    struct fuse_context * ctxt = fuse_get_context();
+    struct fusedata *mydata = (struct fusedata *)ctxt->private_data;
+    int i = 0;
+    int off, full = 0;
+    int inode_num = gros_namei(mydata->disk, path);
+    // if we couldn't find the directory, error
+    if (inode_num < 0) {
+        return -ENOENT;
+    }
+    Inode *inode = gros_get_inode(mydata->disk, inode_num);
+    DirEntry * ent = NULL; // the current direntry
+    DirEntry * tmp = NULL; // the next direntry
+    // get the first direntry
+    gros_readdir_r(mydata->disk, inode, NULL, &ent);
 
-    // To traverse the path by gros_readdir()
+    // advance to the direntry after `offset` given from params
+    while (ent != NULL && i < (offset / sizeof(DirEntry))) {
+        gros_readdir_r(mydata->disk, inode, ent, &tmp);
+        i++;
+    }
 
-    return 0; // do this
+    while (ent != NULL && full != 1) {
+        // get the next direntry and put it into tmp
+        gros_readdir_r(mydata->disk, inode, ent, &tmp);
+        // if there are no more direntries, off = 0, else offset is to next
+        off = tmp == NULL ? 0 : (i) * sizeof(DirEntry);
+        // full will be 1 if the buffer is full
+        full = filler(buf, ent->filename, NULL, off);
+        // signal we're moving on
+        i++;
+        // tmp is the new current entry
+        ent = tmp;
+    }
+
+    return 0;
 }
 
 // Make a special (device) file, FIFO, or socket. See mknod(2) for details.
