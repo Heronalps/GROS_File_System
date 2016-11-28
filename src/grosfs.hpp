@@ -266,4 +266,6 @@ int gros_is_dir( short acl );
 int gros_is_symlink( short acl );
 
 
+int gros_is_valid_inode( int inode_num );
+
 #endif

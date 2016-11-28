@@ -807,7 +807,6 @@ int gros_i_unlink( Disk * disk, Inode * inode, const char * filename ) {
 }
 
 
-// TODO check for correct filename
 int gros_unlink( Disk * disk, const char * path ) {
     const char * filename    = strrchr( path, '/' ) + 1;
     int          length      = ( int ) ( strlen( path ) - strlen( filename ) );

@@ -42,7 +42,7 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     struct fuse_context * ctxt   = fuse_get_context();
     struct fusedata     * mydata = ( struct fusedata * ) ctxt->private_data;
 
-    std::memset(stbuf, 0, sizeof(struct stat));
+    std::memset( stbuf, 0, sizeof( struct stat ) );
 
     inode_num = gros_namei( mydata->disk, path );
     if( inode_num < 0 ) return -ENOENT;
@@ -134,7 +134,32 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
     return 0;
 }
 
-
+/** Function to add an entry in a readdir() operation
+ * @param buf the buffer passed to the readdir() operation
+ * @param name the file name of the directory entry
+ * @param stat file attributes, can be NULL
+ * @param off offset of the next entry or zero
+ * @return 1 if buffer is full, zero otherwise
+int (*fuse_fill_dir_t) (void *buf, const char *name,const struct stat *stbuf, off_t off);
+static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
+                       off_t offset, struct fuse_file_info *fi)
+    DIR *dp;
+    struct dirent *de;
+    (void) offset;
+    (void) fi;
+    path = full(path);
+    debugf("fusexmp: readdir(%s)\n", path);
+    dp = opendir(path);
+    if (dp == NULL) return -errno;
+    while ((de = readdir(dp)) != NULL) {
+        struct stat st;
+        memset(&st, 0, sizeof(st));
+        st.st_ino = de->d_ino;
+        st.st_mode = de->d_type << 12;
+        if (filler(buf, de->d_name, &st, 0))
+            break;
+    closedir(dp);
+    return 0;*/
 // Return one or more directory entries (struct dirent) to the caller.
 // This is one of the most complex FUSE functions. It is related to, but not
 // identical to, the readdir(2) and getdents(2) system calls, and the readdir(3)
@@ -151,21 +176,20 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
     size_t off = 0;
     int inode_num = gros_namei(mydata->disk, path);
     // if we couldn't find the directory, error
-    if (inode_num < 0) {
-        return -ENOENT;
-    }
-    Inode *inode = gros_get_inode(mydata->disk, inode_num);
-    DirEntry * ent = NULL; // the current direntry
-    DirEntry * tmp = NULL; // the next direntry
-    // get the first direntry
-    gros_readdir_r(mydata->disk, inode, NULL, &ent);
+    if( inode_num < 0 ) return -ENOENT;
 
-    while (ent != NULL && full != 1) {
+    Inode    * inode = gros_get_inode( mydata->disk, inode_num );
+    DirEntry * ent   = NULL; // the current direntry
+    DirEntry * tmp   = NULL; // the next direntry
+    // get the first direntry
+    gros_readdir_r( mydata->disk, inode, NULL, &ent );
+
+    while( ent != NULL && full != 1 ) {
         // get the next direntry and put it into tmp
-        gros_readdir_r(mydata->disk, inode, ent, &tmp);
+        gros_readdir_r( mydata->disk, inode, ent, &tmp );
         // if there are no more direntries, off = 0, else offset is to next
-        off = tmp == NULL ? 0 : ((24+strlen(ent->filename)+7)&~7);
-        if (off < offset) {
+        off = tmp == NULL ? 0 : ( int ) ( ( 24 + strlen( ent->filename ) + 7 ) & ~7 );
+        if( off < offset ) {
             ent = tmp;
             continue;
         }
@@ -176,7 +200,6 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
         // tmp is the new current entry
         ent = tmp;
     }
-
     return 0;
 }
 
@@ -191,10 +214,9 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
     	return -EACCES;
 
     int inode_num = gros_mknod(mydata->disk, path);
-    if (inode_num < 0)
-        return -EIO;
+    if( inode_num < 0 ) return -EIO;
     Inode * inode = gros_get_inode(mydata->disk, inode_num);
-    inode->f_acl = 0; // regular file
+    inode->f_acl  = 0; // regular file
 
     gros_i_chmod( mydata->disk, inode, mode );
 
@@ -469,11 +491,11 @@ int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
 }
 
 
-// This is the only FUSE function that doesn't have a directly corresponding system call,
-// although close(2) is related. Release is called when FUSE is completely done with a file;
-// at that point, you can free up any temporarily allocated data structures.
-// The IBM document claims that there is exactly one release per open,
-// but I don't know if that is true.
+// This is the only FUSE function that doesn't have a directly corresponding
+// system call, although close(2) is related. Release is called when FUSE is
+// completely done with a file; at that point, you can free up any temporarily
+// allocated data structures. The IBM document claims that there is exactly one
+// release per open, but I don't know if that is true.
 int grosfs_release( const char * path, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_release ( \"" << path << "\" ) " << std::endl;
     return 0; // leave unimplemented

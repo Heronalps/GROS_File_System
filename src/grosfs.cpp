@@ -71,24 +71,23 @@ void gros_init_inodes( Disk * disk, int num_inode_blocks, int inodes_per_block )
     int     j;
     int     inode_num;
     int     rel_inode_index;
-    Inode   inodes[BLOCK_SIZE / sizeof(Inode)];
+    Inode   inodes[ BLOCK_SIZE / sizeof( Inode ) ];
     Inode * tmp;
 
     inode_num    = 0;
     tmp          = new Inode();
     tmp->f_links = 0;
 
+    // initialize null data block pointers
     for( i = 0; i < 15; i++ )
-        tmp->f_block[ i ] = -1;   // null data block pointers
+        tmp->f_block[ i ] = -1;
 
     // inodes are in blocks 1 through `num_inode_blocks`
     for( i = 1; i <= num_inode_blocks; i++ ) {
-        // gros_read in the block to fill with inodes
-
         for( j = 0; j < inodes_per_block; j++ ) {
             tmp->f_inode_num = inode_num++;
-            rel_inode_index = j % inodes_per_block;
-            std::memcpy(&(inodes[rel_inode_index]), tmp, sizeof(Inode));
+            rel_inode_index  = j % inodes_per_block;
+            std::memcpy( &( inodes[ rel_inode_index ] ), tmp, sizeof( Inode ) );
         }
         gros_write_block( disk, i, ( char * ) inodes );
     }
@@ -270,14 +269,14 @@ void gros_fsck( Disk * disk ) {
                                     gros_rmdir( disk, gros_pwd( disk, inode,
                                                                 direntry->filename ) );
                             }
-                            else size += sizeof( DirEntry );
+//                            else size += sizeof( DirEntry );
                         }
                     }
                 }
             }
             // check file size matches # bytes in inode
-            if( inode->f_size != size )
-                inode->f_size = size;
+//            if( inode->f_size != size )
+//                inode->f_size = size;
         } // done scanning all inodes in block
     } // done scanning all inode blocks
 
@@ -296,6 +295,7 @@ void gros_fsck( Disk * disk ) {
         perror( "Corrupt data blocks in file system" );
         exit( -1 );
     }
+    free( allocd_blocks );
 }
 
 
@@ -338,11 +338,12 @@ const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) 
     char     * path;
 
     // check if filepath is NULL
-    ! filepath ? filepath = ( char * ) "\0" : filepath;
+    if( ! filepath )
+        filepath = ( char * ) calloc( 1, sizeof( char ) );
 
-    // pass over directory entry pointing to self
+    // skip directory entry pointing to self
     gros_readdir_r( disk, dir, NULL, &dir_inode );
-    // parent directory entry
+    // skip parent directory entry
     gros_readdir_r( disk, dir, dir_inode, &dir_inode );
 
     // allocate char array big enough for paths + slash + null terminator
@@ -351,6 +352,7 @@ const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) 
                               + 2,
                               sizeof( char ) );
     strncpy( path, filepath, strlen( filepath ) );
+    strncat( path, "/", 1 );
     strncat( path, dir_inode->filename, strlen( dir_inode->filename ) );
 
     // recurse until root
@@ -366,7 +368,6 @@ const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) 
 }
 
 
-// TODO test function
 /**
  * Checks for inode number in parent directory entries
  *
@@ -407,7 +408,7 @@ int gros_count_links( Disk * disk, Inode * dir, int inode_num, int links ) {
         // increment links if inode number found
         links += ( direntry->inode_num == inode_num );
 
-        // continue traversal, increment links if directory is found
+        // continue traversal if directory is found
         inode = gros_get_inode( disk, direntry->inode_num );
         if( gros_is_dir( inode->f_acl ) )
             gros_count_links( disk, inode, inode_num, links );
@@ -440,8 +441,7 @@ int gros_check_blocks( Disk * disk, int * allocd_blocks, int block_num ) {
     // check block number is valid
     if( block_num > 0 || block_num < superblock->fs_num_blocks ) {
         // check if data block is marked used in bitmap
-        gros_read_block( disk, block_num % superblock->fs_num_block_groups,
-                         bbuf );
+        gros_read_block( disk, block_num % superblock->fs_num_block_groups, bbuf );
         valid = gros_is_bit_set( ( Bitmap * ) bbuf, block_num );
 
         // loop until end of list or duplicate is found or add to list
@@ -456,13 +456,14 @@ int gros_check_blocks( Disk * disk, int * allocd_blocks, int block_num ) {
             gros_read_block( disk, block_num, bbuf );
 
             // calculate size of block
-//            TODO check properly detects end of file, looks for 0
-            while( size < BLOCK_SIZE && bbuf[ size / sizeof( char ) ] > 0 )
-                size += sizeof( char );
+//            check properly detects end of file, looks for 0
+//            while( size < BLOCK_SIZE && bbuf[ size / sizeof( char ) ] > 0 )
+//                size += sizeof( char );
         }
     }
     // return 0 if invalid, else return size
-    return valid * size;
+//    return valid * size;
+    return valid;
 }
 
 
@@ -844,7 +845,7 @@ int gros_is_file( short acl ) {
     int first_bit  = acl & 1;
     int second_bit = ( ( acl & 2 ) >> 1 );
 
-    return ( first_bit == 0 && second_bit == 0 );
+    return( first_bit == 0 && second_bit == 0 );
 }
 
 
@@ -852,15 +853,22 @@ int gros_is_dir( short acl ) {
     int first_bit  = acl & 1;
     int second_bit = ( ( acl & 2 ) >> 1 );
 
-    return ( first_bit == 1 && second_bit == 0 );
+    return( first_bit == 1 && second_bit == 0 );
 }
 
 int gros_is_symlink( short acl ) {
     int first_bit  = acl & 1;
     int second_bit = ( ( acl & 2 ) >> 1 );
 
-    return ( first_bit == 0 && second_bit == 1 );
+    return( first_bit == 0 && second_bit == 1 );
 }
+
+
+//int gros_is_valid_inode_num( Disk * disk, int inode_num ) {
+//    Superblock * superblock;
+//    gros_read_block( disk, 0, ( Superblock * ) superblock );
+//    return( inode_num > 0 && inode_num < superblock ->
+//}
 
 
 TEST_CASE( "OS File System can be properly created", "[FileSystem]" ) {
