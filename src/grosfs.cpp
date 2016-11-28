@@ -585,17 +585,17 @@ Inode * gros_get_inode( Disk * disk, int inode_num ) {
     Inode       * ret_inode = new Inode();
 
     gros_read_block( disk, 0, ( char * ) superblock );
-    inodes_per_block = ( int ) floor( 1.0f*superblock->fs_block_size
+    inodes_per_block = ( int ) floor( 1.0f * superblock->fs_block_size
                                       / superblock->fs_inode_size );
-    delete superblock;
-    block_num       = 1+inode_num / inodes_per_block;
-    rel_inode_index = inode_num % inodes_per_block;
+    block_num        = 1 + inode_num / inodes_per_block;
+    rel_inode_index  = inode_num % inodes_per_block;
 
     gros_read_block( disk, block_num, buf );
     Inode * block_inodes = ( Inode * ) buf;
     std::memcpy( ret_inode,
                  &( block_inodes[ rel_inode_index ] ),
                  sizeof( Inode ) );
+    delete superblock;
     return ret_inode;
 }
 
@@ -620,7 +620,7 @@ int gros_save_inode( Disk * disk, Inode * inode ) {
     inode_num        = inode->f_inode_num;
     inodes_per_block = ( int ) floor( superblock->fs_block_size
                                       / superblock->fs_inode_size );
-    block_num        = 1+inode_num / inodes_per_block;
+    block_num        = 1 + inode_num / inodes_per_block;
     rel_inode_index  = inode_num % inodes_per_block;
 
     // save the inode to disk
@@ -658,9 +658,7 @@ void gros_free_inode( Disk * disk, Inode * inode ) {
     n_indirects    = BLOCK_SIZE / sizeof( int );
 
     // deallocate the direct blocks
-    done           = gros_free_blocks_list( disk,
-                                            ( int * ) inode->f_block,
-                                            direct_blocks );
+    done = gros_free_blocks_list( disk, ( int * ) inode->f_block, direct_blocks );
 
     // deallocate the single indirect blocks
     if( ! done ) {
@@ -771,10 +769,12 @@ int gros_free_blocks_list( Disk * disk, int * block_list, int n ) {
  * @param int    block_index  The block number of the block to deallocate
  */
 void gros_free_data_block( Disk * disk, int block_index ) {
-    char buf[ BLOCK_SIZE ];
-    int relative_index, block_group, offset;
-    Bitmap * bm;
-    Superblock * superblock = new Superblock();
+    char          buf[ BLOCK_SIZE ];
+    int           relative_index;
+    int           block_group;
+    int           offset;
+    Bitmap      * bm;
+    Superblock  * superblock = new Superblock();
 
     // gros_write zeroes to block
     gros_write_block( disk, block_index, buf );

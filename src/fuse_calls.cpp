@@ -4,6 +4,7 @@
 
 #include "fuse_calls.hpp"
 
+
 // Initialize the filesystem. This function can often be left unimplemented,
 // but it can be a handy way to perform one-time setup such as allocating
 // variable-sized data structures or initializing a new filesystem.
@@ -16,12 +17,14 @@
 void * grosfs_init( struct fuse_conn_info * conn ) {
     pdebug << "in grosfs_init" << std::endl;
     struct fusedata * mydata = new struct fusedata();
-    mydata->disk = gros_open_disk();
+    mydata->disk             = gros_open_disk();
+
     if( mydata->disk->isnew )
         gros_make_fs( mydata->disk );
 
     return mydata;
 }
+
 
 // Called when the filesystem exits. The private_data comes from the return value of init.
 void grosfs_destroy( void * private_data ) {
@@ -31,11 +34,12 @@ void grosfs_destroy( void * private_data ) {
     return;
 }
 
+
 // Return file attributes. The "stat" structure is described in detail in the
 // stat(2) manual page. For the given pathname, this should fill in the elements
-// of the "stat" structure. If a field is meaningless or semi-meaningless (e.g., st_ino)
-// then it should be set to 0 or given a "reasonable" value. This call is pretty
-// much required for a usable filesystem.
+// of the "stat" structure. If a field is meaningless or semi-meaningless
+// (e.g., st_ino) then it should be set to 0 or given a "reasonable" value.
+// This call is pretty much required for a usable filesystem.
 int grosfs_getattr( const char * path, struct stat * stbuf ) {
     pdebug << "in grosfs_getattr ( \"" << path << "\" )" << std::endl;
     int                   inode_num;
@@ -50,11 +54,13 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     return gros_i_stat( mydata->disk, inode_num, stbuf );
 }
 
+
 // As getattr, but called when fgetattr(2) is invoked by the user program.
 int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_info *fi ) {
     pdebug << "in grosfs_fgetattr ( \"" << path << "\" )" << std::endl;
     return grosfs_getattr( path, stbuf );
 }
+
 
 // This is the same as the access(2) system call. It returns -ENOENT if the path
 // doesn't exist, -EACCESS if the requested permission isn't available, or 0 for
@@ -134,32 +140,7 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
     return 0;
 }
 
-/** Function to add an entry in a readdir() operation
- * @param buf the buffer passed to the readdir() operation
- * @param name the file name of the directory entry
- * @param stat file attributes, can be NULL
- * @param off offset of the next entry or zero
- * @return 1 if buffer is full, zero otherwise
-int (*fuse_fill_dir_t) (void *buf, const char *name,const struct stat *stbuf, off_t off);
-static int xmp_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-                       off_t offset, struct fuse_file_info *fi)
-    DIR *dp;
-    struct dirent *de;
-    (void) offset;
-    (void) fi;
-    path = full(path);
-    debugf("fusexmp: readdir(%s)\n", path);
-    dp = opendir(path);
-    if (dp == NULL) return -errno;
-    while ((de = readdir(dp)) != NULL) {
-        struct stat st;
-        memset(&st, 0, sizeof(st));
-        st.st_ino = de->d_ino;
-        st.st_mode = de->d_type << 12;
-        if (filler(buf, de->d_name, &st, 0))
-            break;
-    closedir(dp);
-    return 0;*/
+
 // Return one or more directory entries (struct dirent) to the caller.
 // This is one of the most complex FUSE functions. It is related to, but not
 // identical to, the readdir(2) and getdents(2) system calls, and the readdir(3)
@@ -204,9 +185,9 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 }
 
 
-// Make a special (device) file, FIFO, or socket. See mknod(2) for details.
-// This function is rarely needed, since it's uncommon to make these objects
-// inside special-purpose filesystems.
+// Make a special (device) file, FIFO, or socket. See mknod(2) for details. This
+// function is rarely needed, since it's uncommon to make these objects inside
+// special-purpose filesystems.
 int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
     pdebug << "in grosfs_mknod ( \"" << path << "\", " << mode << ", " << rdev << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
@@ -323,33 +304,33 @@ int grosfs_chmod( const char * path, mode_t mode ) {
     pdebug << "in grosfs_chmod ( \"" << path << "\", " << mode << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     int inode_num = gros_namei( mydata->disk, path );
-    if (inode_num < 0) {
+    if( inode_num < 0 )
         return -ENOENT;
-    }
+
     Inode * inode = gros_get_inode( mydata->disk, inode_num );
     gros_i_chmod( mydata->disk, inode, mode );
     gros_save_inode( mydata->disk, inode );
-    return 0; // leave unimplemented
+    return 0;
 }
 
 
-// Change the given object's owner and group to the provided values.
-// See chown(2) for details. NOTE: FUSE doesn't deal particularly well with file
-// ownership, since it usually runs as an unprivileged user and this call is
-// restricted to the superuser. It's often easier to pretend that all files are
-// owned by the user who mounted the filesystem, and to skip implementing this function.
+// Change the given object's owner and group to the provided values. See chown(2)
+// for details. NOTE: FUSE doesn't deal particularly well with file ownership,
+// since it usually runs as an unprivileged user and this call is restricted to
+// the superuser. It's often easier to pretend that all files are owned by the
+// user who mounted the filesystem, and to skip implementing this function.
 int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
     pdebug << "in grosfs_chown ( \"" << path << "\", " << uid << ", " << gid << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     int inode_num = gros_namei( mydata->disk, path );
-    if (inode_num < 0) {
+    if( inode_num < 0 )
         return -ENOENT;
-    }
+
     Inode * inode = gros_get_inode( mydata->disk, inode_num );
     inode->f_uid = uid;
     inode->f_gid = gid;
     gros_save_inode( mydata->disk, inode );
-    return 0; // leave unimplemented
+    return 0;
 }
 
 
@@ -372,10 +353,10 @@ int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info * fi 
 
 // Update the last access time of the given object from ts[0] and the last modification
 // time from ts[1]. Both time specifications are given to nanosecond resolution,
-// but your filesystem doesn't have to be that precise; see utimensat(2) for full details.
-// Note that the time specifications are allowed to have certain special values;
-// however, I don't know if FUSE functions have to support them. This function
-// isn't necessary but is nice to have in a fully functional filesystem.
+// but your filesystem doesn't have to be that precise; see utimensat(2) for full
+// details. Note that the time specifications are allowed to have certain special
+// values; however, I don't know if FUSE functions have to support them. This
+// function isn't necessary but is nice to have in a fully functional filesystem.
 int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
     pdebug << "in grosfs_utimens ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata    = ( struct fusedata * ) fuse_get_context()->private_data;
@@ -465,9 +446,9 @@ int grosfs_write( const char * path, const char * buf, size_t size, off_t offset
 }
 
 
-// Return statistics about the filesystem. See statvfs(2) for a description of
-// the structure contents. Usually, you can ignore the path. Not required, but handy
-// for read/write filesystems since this is how programs like df determine the free space.
+// Return statistics about the filesystem. See statvfs(2) for a description of the
+// structure contents. Usually, you can ignore the path. Not required, but handy for
+// read/write filesystems since this is how programs like df determine the free space.
 int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
     pdebug << "in grosfs_statfs ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
@@ -510,11 +491,11 @@ int grosfs_releasedir( const char * path, struct fuse_file_info * fi ) {
 
 
 // Flush any dirty information about the file to disk. If isdatasync is nonzero,
-// only data, not metadata, needs to be flushed. When this call returns,
-// all file data should be on stable storage. Many filesystems leave this call
-// unimplemented, although technically that's a Bad Thing since it risks losing data.
-// If you store your filesystem inside a plain file on another filesystem, you can
-// implement this by calling fsync(2) on that file, which will flush too much data
+// only data, not metadata, needs to be flushed. When this call returns, all file
+// data should be on stable storage. Many filesystems leave this call unimplemented,
+// although technically that's a Bad Thing since it risks losing data. If you store
+// your filesystem inside a plain file on another filesystem, you can implement
+// this by calling fsync(2) on that file, which will flush too much data
 // (slowing performance) but achieve the desired guarantee.
 int grosfs_fsync( const char * path, int isdatasync, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_fsync ( \"" << path << "\", " << isdatasync << " ) " << std::endl;
@@ -530,8 +511,8 @@ int grosfs_fsyncdir( const char * path, int isdatasync, struct fuse_file_info * 
 }
 
 
-// Called on each close so that the filesystem has a chance to report delayed errors.
-// Important: there may be more than one flush call for each open.
+// Called on each close so that the filesystem has a chance to report delayed
+// errors. Important: there may be more than one flush call for each open.
 // Note: There is no guarantee that flush will ever be called at all!
 int grosfs_flush( const char * path, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_flush ( \"" << path << "\" ) " << std::endl;
@@ -667,22 +648,19 @@ int grosfs_listxattr(const char* path, const char* list, size_t size) {
 #endif
 
 
-// Support the ioctl(2) system call. As such, almost everything is up to the filesystem.
-// On a 64-bit machine, FUSE_IOCTL_COMPAT will be set for 32-bit ioctls.
-// The size and direction of data is determined by _IOC_*() decoding of cmd.
-// For _IOC_NONE, data will be NULL; for _IOC_WRITE data is being written by the user;
-// for _IOC_READ it is being read, and if both are set the data is bidirectional.
-// In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
+// Support the ioctl(2) system call. As such, almost everything is up to the
+// filesystem. On a 64-bit machine, FUSE_IOCTL_COMPAT will be set for 32-bit
+// ioctls. The size and direction of data is determined by _IOC_*() decoding of
+// cmd. For _IOC_NONE, data will be NULL; for _IOC_WRITE data is being written
+// by the user; for _IOC_READ it is being read, and if both are set the data is
+// bidirectional. In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
 int grosfs_ioctl( const char * path, int cmd, void * arg,
                   struct fuse_file_info * fi, unsigned int flags, void * data ) {
     pdebug << "in grosfs_ioctl ( \"" << path << "\", " << cmd << ", " << flags << " ) " << std::endl;
 //    int size = IOCPARM_LEN( cmd );
-//    long dir  = IOCBASECMD( cmd );
 
-
-    if (flags & FUSE_IOCTL_COMPAT)
+    if( flags & FUSE_IOCTL_COMPAT )
         return -ENOSYS;
-
 /*    switch( dir ) {
         case _IOR('E', 0, size_t):
             grosfs_read( path, ( char * ) data, ( size_t ) size, 0, fi );
@@ -693,15 +671,14 @@ int grosfs_ioctl( const char * path, int cmd, void * arg,
         default:
             return -EINVAL;
     }*/
-
     return 0;
 }
 
 
-// Poll for I/O readiness. If ph is non-NULL, when the filesystem is ready for I/O
-// it should call fuse_notify_poll (possibly asynchronously) with the specified ph;
-// this will clear all pending polls. The callee is responsible for destroying ph
-// with fuse_pollhandle_destroy() when ph is no longer needed.
+// Poll for I/O readiness. If ph is non-NULL, when the filesystem is ready for
+// I/O it should call fuse_notify_poll (possibly asynchronously) with the specified
+// ph; this will clear all pending polls. The callee is responsible for destroying
+// ph with fuse_pollhandle_destroy() when ph is no longer needed.
 int grosfs_poll( const char * path, struct fuse_file_info * fi,
                  struct fuse_pollhandle * ph, unsigned * reventsp ) {
     pdebug << "in grosfs_poll ( \"" << path << "\" ) " << std::endl;
