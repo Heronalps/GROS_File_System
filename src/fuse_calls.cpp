@@ -141,6 +141,7 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
 }
 
 
+//TODO check permissions
 // Return one or more directory entries (struct dirent) to the caller.
 // This is one of the most complex FUSE functions. It is related to, but not
 // identical to, the readdir(2) and getdents(2) system calls, and the readdir(3)
@@ -148,16 +149,18 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
 // Required for essentially any filesystem, since it's what makes ls and a whole
 // bunch of other things work.
 int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
-                  off_t offset, struct fuse_file_info * fi ) {
+                    off_t offset, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_readdir ( \"" << path << "\", " << offset << " )" << std::endl;
-    struct fuse_context * ctxt = fuse_get_context();
-    struct fusedata *mydata = (struct fusedata *)ctxt->private_data;
-    struct stat *stbuf;
-    int full = 0;
-    size_t off = 0;
-    int inode_num = gros_namei(mydata->disk, path);
+    struct fuse_context * ctxt   = fuse_get_context();
+    struct fusedata     * mydata = ( struct fusedata * ) ctxt->private_data;
+    struct stat         * stbuf;
+    int                   full   = 0;
+    size_t                off    = 0;
+    int                   inode_num;
+
     // if we couldn't find the directory, error
-    if( inode_num < 0 ) return -ENOENT;
+    if( ( inode_num = gros_namei( mydata->disk, path ) ) < 0 )
+        return -ENOENT;
 
     Inode    * inode = gros_get_inode( mydata->disk, inode_num );
     DirEntry * ent   = NULL; // the current direntry
@@ -169,7 +172,7 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
         // get the next direntry and put it into tmp
         gros_readdir_r( mydata->disk, inode, ent, &tmp );
         // if there are no more direntries, off = 0, else offset is to next
-        off = tmp == NULL ? 0 : ( int ) ( ( 24 + strlen( ent->filename ) + 7 ) & ~7 );
+        off = tmp == NULL ? 0 : ( ( 24 + strlen( ent->filename ) + 7 ) & ~7 );
         if( off < offset ) {
             ent = tmp;
             continue;

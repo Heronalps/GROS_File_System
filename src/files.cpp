@@ -5,7 +5,6 @@
 #include "files.hpp"
 #include <cstring>
 
-
 /**
  * Creates the primordial directory for the file system (i.e. root "/")
  *  The root of the file system will always be inode #0.
@@ -13,7 +12,7 @@
  *  @param Disk * disk   The disk containing the file system
  */
 void gros_mkroot( Disk * disk ) {
-    Inode *  root_i;
+    Inode  * root_i;
     DirEntry root[ 2 ];
 
     // get the zero-th inode to store the root dir in
@@ -31,6 +30,7 @@ void gros_mkroot( Disk * disk ) {
     gros_save_inode( disk, root_i );
     gros_i_write( disk, root_i, ( char * ) &(root[0]), sizeof( DirEntry ), 0 );
     gros_i_write( disk, root_i, ( char * ) &(root[1]), sizeof( DirEntry ), sizeof( DirEntry ) );
+
     delete root_i;
 }
 
@@ -272,15 +272,14 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
     // inode. this will change if we are in the double indirect block
     si = inode->f_block[ SINGLE_INDRCT ];
 
-    // if we don't have to write, don't write. ¯\_(ツ)_/¯
-    if( size <= 0 )
-        return 0;
+    // if we don't have to write, don't gros_write. ¯\_(ツ)_/¯
+    if( size <= 0 ) return 0;
 
     // if we're writing to some offset, make sure it's that size
     gros_i_ensure_size(disk, inode, offset);
 
     // get the superblock so we can get the data we need about the file system
-    gros_read_block( disk, 0, (char *) superblock );
+    gros_read_block( disk, 0, ( char * ) superblock );
     block_size     = superblock->fs_block_size;
 
     // the number of indirects a block can have
@@ -305,13 +304,12 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
         if( block_to_write >= ( n_indirects_sq + SINGLE_INDRCT ) ) {
             // if we haven't fetched the triple indirect block yet, do so now
             if( tiblock == NULL ) {
-                tiblock = new int[n_indirects];
+                tiblock = new int[ n_indirects ];
                 // make sure all blocks before triple indirect block
                 // are filled/allocated
                 gros_i_ensure_size(
                         disk, inode,
-                        ( n_indirects_sq + n_indirects + SINGLE_INDRCT ) *
-                        block_size
+                        ( n_indirects_sq + n_indirects + SINGLE_INDRCT ) * block_size
                 );
                 // if there is no triple indirect block yet, we need to allocate one
                 if( inode->f_block[ TRIPLE_INDRCT ] == -1 ) {
@@ -341,12 +339,12 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
             if( ti_index == -1 && di == -1 ) {
                 // make sure all blocks before double indirect block
                 // are filled/allocated
-                gros_i_ensure_size( disk, inode,
-                                    ( n_indirects + SINGLE_INDRCT ) *
-                                    block_size );
+                gros_i_ensure_size(
+                        disk, inode,
+                        ( n_indirects + SINGLE_INDRCT ) * block_size
+                );
                 // allocate a data block and save the inode
-                inode->f_block[ DOUBLE_INDRCT ] = gros_allocate_data_block(
-                        disk );
+                inode->f_block[ DOUBLE_INDRCT ] = gros_allocate_data_block( disk );
                 di = inode->f_block[ DOUBLE_INDRCT ];
                 gros_save_inode( disk, inode );
             }
@@ -360,8 +358,8 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
                         // all inode double indirects plus
                         // all inode single indirects plus 12 (direct)
                                     ( ti_index * n_indirects_sq + n_indirects_sq
-                                      + n_indirects + SINGLE_INDRCT ) *
-                                    block_size );
+                                      + n_indirects + SINGLE_INDRCT )
+                                    * block_size );
                 // allocate a double indirect block and save the tiblock
                 tiblock[ ti_index ] = gros_allocate_data_block( disk );
                 di = tiblock[ ti_index ];
@@ -509,9 +507,7 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
                 (is_first == 1 ? (offset % block_size) : 0)
         );
         inode->f_size = tosave->f_size;
-
         gros_save_inode( disk, tosave );
-
         is_first = 0;
         cur_block++;
     }
@@ -576,7 +572,7 @@ int gros_ensure_size( Disk * disk, char * path, int size ) {
  * @param  char  *  filename  Name of new file
  * @return int                Inode number of new file
  */
-int gros_i_mknod( Disk * disk, Inode * inode, const char * filename ) {
+int gros_i_mknod( Disk * disk, Inode * pdir, const char * filename ) {
     DirEntry * direntry = new DirEntry();
     Inode    * new_file = gros_new_inode( disk );
     int        status   = 0;
@@ -585,14 +581,14 @@ int gros_i_mknod( Disk * disk, Inode * inode, const char * filename ) {
 
     new_file->f_links   = 1;
     direntry->inode_num = new_file->f_inode_num;
-    strcpy( direntry->filename, filename );
+    strncpy( direntry->filename, filename, strlen( filename ) + 1 );
 
     if ( gros_save_inode( disk, new_file ) < 1 ) {
         gros_free_inode( disk, new_file );
         return -1;
     }
-    gros_i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
-                  inode->f_size );
+    gros_i_write( disk, pdir, ( char * ) direntry, sizeof( DirEntry ),
+                  pdir->f_size );
 
     delete direntry;
     if (status != 0) return status;
@@ -607,12 +603,9 @@ int gros_mknod( Disk * disk, const char * path ) {
     const char  * file     = strrchr( path, '/' ); // get filename this way
 
     // invalid path
-    if( ! file )
-        return -ENOENT;
-
+    if( ! file ) return -ENOENT;
 
     strncpy( new_path, path, strlen( path ) - strlen( file ) );
-
     file += 1; // skip over delimiter
     Inode * inode = gros_get_inode( disk, gros_namei( disk, new_path ) );
 
@@ -646,7 +639,7 @@ int gros_i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
     strcpy( entries[ 1 ].filename, ".." );
 
     new_dir->f_links = 2;
-    new_dir->f_acl = 0x3ed;
+    new_dir->f_acl   = 0x3ed;
     inode->f_links  += 1;
 
     // save directories back to disk
@@ -694,11 +687,12 @@ int gros_mkdir( Disk * disk, const char * path ) {
 *  If files then have 0 links, those files will be deleted/freed.
 *  TODO: Consider forcing vs not forcing recursive delete (error under latter)
 *
-* @param Disk  *  disk     Disk containing the file system
-* @param Inode *  inode    Inode of directory containing directory to delete
-* @param char  *  dirname  Name of directory to delete
+* @param  Disk  *  disk     Disk containing the file system
+* @param  Inode *  pdir     Inode of parent directory
+* @param  Inode *  dir      Name of directory to delete
+* @return int      status   0 upon success, negative on failure
 */
-int gros_i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode ) {
+int gros_i_rmdir( Disk * disk, Inode * pdir, Inode * dir ) {
     DirEntry * result;
     Inode    * child_inode;
     int        status           = 1;
@@ -706,37 +700,46 @@ int gros_i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode ) {
     int        direntry_size    = sizeof( DirEntry );
     char       buf[ direntry_size ];
 
-    gros_readdir_r( disk, dir_inode, NULL, &result );
-    gros_readdir_r( disk, dir_inode, result, &result );
-    gros_readdir_r( disk, dir_inode, result, &result );
+    // check first 2 entries are ".", ".."
+    if( gros_readdir_r( disk, dir, NULL, &result )
+        || gros_readdir_r( disk, dir, result, &result ) )
+        return -EINVAL;
+    gros_readdir_r( disk, dir, result, &result );
 
+    // unlink entries, recursively remove nested directories
     while( result ) {
-        if( gros_is_dir(
-                gros_get_inode( disk, result->inode_num )->f_acl ) ) {
+        if( gros_is_dir( gros_get_inode( disk, result->inode_num )->f_acl ) ) {
+//            return -ENOTEMPTY;
             child_inode = gros_get_inode( disk, result->inode_num );
-            gros_i_rmdir( disk, dir_inode, child_inode );
-        } else {
-            gros_i_unlink( disk, dir_inode, result->filename );
+            gros_i_rmdir( disk, dir, child_inode );
         }
-        gros_readdir_r( disk, dir_inode, result, &result );
+        else
+            gros_i_unlink( disk, dir, result->filename );
+        gros_readdir_r( disk, dir, result, &result );
     }
 
-    gros_readdir_r( disk, inode, NULL, &result );
+    // remove entry from parent directory
+    if( gros_readdir_r( disk, pdir, NULL, &result )
+        || gros_readdir_r( disk, pdir, result, &result ) )
+        status = -EINVAL;
+    gros_readdir_r( disk, pdir, result, &result );
+
     while( result && status ) {
-        if( result->inode_num == dir_inode->f_inode_num ) {
-            gros_i_read( disk, inode, buf, direntry_size,
-                         inode->f_size - direntry_size );
-            gros_i_write( disk, inode, buf, direntry_size,
+        // loop until dir entry, replace with last entry in parent directory
+        if( result->inode_num == dir->f_inode_num ) {
+            gros_i_read( disk, pdir, buf, direntry_size,
+                         pdir->f_size - direntry_size );
+            gros_i_write( disk, pdir, buf, direntry_size,
                           direntry_counter * direntry_size );
             status = 0;
         }
         direntry_counter++;
-        gros_readdir_r( disk, inode, result, &result );
+        gros_readdir_r( disk, pdir, result, &result );
     }
-    gros_i_truncate( disk, inode, inode->f_size - direntry_size );
-    gros_free_inode( disk, dir_inode );
+    gros_i_truncate( disk, pdir, pdir->f_size - direntry_size );
+    gros_free_inode( disk, dir );
 
-    status ? status = -1 : status;
+    status ? status = -EINVAL : status;
     return status;
 }
 
@@ -749,18 +752,19 @@ int gros_rmdir( Disk * disk, const char * path ) {
     int          parent_num;
     int          inode_num;
 
-    inode_num = gros_namei( disk, path );
-    if (inode_num < 0) {
+    if( ( inode_num = gros_namei( disk, path ) ) < 0 )
         return 0;
-    }
 
     strncpy( parent_path, path, ( size_t ) length );
-    parent_path[ length-1 ] = '\0';
-    parent_num = gros_namei( disk, parent_path );
+    parent_path[ length - 1 ] = '\0';
 
-    if (parent_num < 0) {
+    if( ( parent_num = gros_namei( disk, parent_path ) ) < 0 )
         return 0;
-    }
+
+/*    strncpy( parent_path, path, ( size_t ) length + 1 );
+    if( ( inode_num = gros_namei( disk, path ) ) < 1
+        || ( parent_num = gros_namei( disk, parent_path ) ) < 0 )
+        return -ENOENT;*/
 
     delete [] parent_path;
     return gros_i_rmdir( disk, gros_get_inode( disk, parent_num ),
@@ -1011,7 +1015,7 @@ int gros_i_truncate( Disk * disk, Inode * inode, int size ) {
     if( tiblock != NULL ) delete [] tiblock;
 
     inode->f_size = size;
-        gros_save_inode( disk, inode );
+    gros_save_inode( disk, inode );
 
     return 0;
 }
@@ -1039,11 +1043,11 @@ int gros_truncate( Disk * disk, const char * path, int size ) {
  */
 int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
                     DirEntry ** result ) {
-    int         direntrysize = sizeof( DirEntry );
     int         status       = 1;
     int         offset       = 0;
-    DirEntry *cur_de = new DirEntry();
-    DirEntry *next_de = new DirEntry();
+    int         direntrysize = sizeof( DirEntry );
+    DirEntry  * cur_de       = new DirEntry();
+    DirEntry  * next_de      = new DirEntry();
 
     if( ! current ) {
         gros_i_read( disk, dir, ( char * ) cur_de, direntrysize, offset );
@@ -1104,10 +1108,10 @@ int gros_i_copy( Disk * disk, Inode * from, Inode * todir, const char * filename
 int gros_copy( Disk * disk, const char * from, const char * to ) {
     const char * filename = strrchr( to, '/' ) + 1;
     int          length   = ( int ) ( strlen( to ) - strlen( filename ) );
-    char       * dirname  = new char[length];
+    char       * dirname  = new char[ length ];
 
     strncpy( dirname, to, ( size_t ) length );
-    dirname[length-1] = '\0';
+    dirname[ length - 1 ] = '\0';
 
     int       from_inode_num = gros_namei( disk, from );
     int       to_dir         = gros_namei( disk, dirname );
@@ -1120,6 +1124,7 @@ int gros_copy( Disk * disk, const char * from, const char * to ) {
             filename
     );
 }
+
 
 int gros_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
     short                 ftyp, usr, grp, uni;

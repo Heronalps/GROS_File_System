@@ -450,19 +450,12 @@ int gros_check_blocks( Disk * disk, int * allocd_blocks, int block_num ) {
                && ( valid = allocd_blocks[ i ] != block_num ) )
             i++;
 
-        // add to list if not duplicate and calculate size
+        // add to list if not duplicate
         if( valid ) {
             allocd_blocks[ i ] = block_num;
             gros_read_block( disk, block_num, bbuf );
-
-            // calculate size of block
-//            check properly detects end of file, looks for 0
-//            while( size < BLOCK_SIZE && bbuf[ size / sizeof( char ) ] > 0 )
-//                size += sizeof( char );
         }
     }
-    // return 0 if invalid, else return size
-//    return valid * size;
     return valid;
 }
 
@@ -498,7 +491,6 @@ Inode * gros_find_free_inode( Disk * disk ) {
             gros_repopulate_ilist( disk, free_inode_index );
     }
     superblock->fs_num_used_inodes++;
-
     // save the superblock to disk with updated free ilist
     gros_write_block( disk, 0, ( char * ) superblock );
 
@@ -581,10 +573,11 @@ Inode * gros_get_inode( Disk * disk, int inode_num ) {
     int           block_num;
     int           rel_inode_index;
     char          buf[ BLOCK_SIZE ];
-    Superblock  * superblock = new Superblock();
-    Inode       * ret_inode = new Inode();
+    Superblock  * superblock;
+    Inode       * ret_inode  = new Inode();
 
-    gros_read_block( disk, 0, ( char * ) superblock );
+    gros_read_block( disk, 0, ( char * ) buf );
+    superblock       = ( Superblock * ) buf;
     inodes_per_block = ( int ) floor( 1.0f * superblock->fs_block_size
                                       / superblock->fs_inode_size );
     block_num        = 1 + inode_num / inodes_per_block;
@@ -863,12 +856,6 @@ int gros_is_symlink( short acl ) {
     return( first_bit == 0 && second_bit == 1 );
 }
 
-
-//int gros_is_valid_inode_num( Disk * disk, int inode_num ) {
-//    Superblock * superblock;
-//    gros_read_block( disk, 0, ( Superblock * ) superblock );
-//    return( inode_num > 0 && inode_num < superblock ->
-//}
 
 
 TEST_CASE( "OS File System can be properly created", "[FileSystem]" ) {

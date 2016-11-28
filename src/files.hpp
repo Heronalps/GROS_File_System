@@ -84,7 +84,7 @@ int gros_write( Disk * disk, const char * path, char * buf, int size,
 * @param Inode *  inode    Inode of directory in which to place new file
 * @param char  *  filename  Name of new file
 */
-int gros_i_mknod( Disk * disk, Inode * inode, const char * filename );
+int gros_i_mknod( Disk * disk, Inode * pdir, const char * filename );
 
 
 /* @param char*  path     FULL path (from root "/") to place the new file */
@@ -110,15 +110,13 @@ int gros_mkdir( Disk * disk, const char * path );
 *  If files then have 0 links, those files will be deleted/freed.
 *  TODO: Consider forcing vs not forcing recursive delete (error under latter)
 *
-* @param Disk  *  disk     Disk containing the file system
-* @param Inode *  inode    Inode of directory containing directory to delete
-* @param char*  path       FULL path (from root "/") to directory the remove
+* @param  Disk  *  disk     Disk containing the file system
+* @param  Inode *  pdir     Inode of parent directory
+* @param  Inode *  dir      Name of directory to delete
+* @return int      status   0 upon success, negative on failure
 */
-int gros_i_rmdir( Disk * disk, Inode * inode, Inode * dir_inode );
+int gros_i_rmdir( Disk * disk, Inode * pdir, Inode * dir );
 
-
-
-/* @param char*  path     FULL path (from root "/") to directory the remove */
 int gros_rmdir( Disk * disk, const char * path );
 
 
@@ -131,8 +129,12 @@ int gros_rmdir( Disk * disk, const char * path );
 */
 int gros_i_unlink( Disk * disk, Inode * inode, const char * filename );
 
-
-/* @param char*  path       FULL path (from root "/") to the file */
+/**
+ * File system wrapper for unlink()
+ * @param  Disk  *  disk     Disk containing the file system
+ * @param  char  *  path     FULL path (from root "/") to the file
+ * @return int      status   0 on success, negative on failure
+ */
 int gros_unlink( Disk * disk, const char * path );
 
 
