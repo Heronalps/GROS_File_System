@@ -45,6 +45,7 @@ int gros_namei( Disk * disk, const char * path ) {
     char     * filename;
     Inode    * dir;
     DirEntry * direntry = NULL;
+    DirEntry * tmp = NULL;
 
     if ( ! strcmp( path, "/" ) || ! strcmp( path, "" )) {
         return 0;
@@ -56,12 +57,15 @@ int gros_namei( Disk * disk, const char * path ) {
     filename = strdup( path );
     filename = strtok( filename, "/" );
 
-    // travese directory for filename in path
-    while( ! gros_readdir_r( disk, dir, direntry, &direntry ) && filename ) {
+    gros_readdir_r( disk, dir, NULL, &direntry);
+    // traverse directory for filename in path
+    while( direntry != NULL && filename ) {
+        gros_readdir_r( disk, dir, direntry, &tmp);
         if( ! strcmp( direntry -> filename, filename ) ) {
             dir      = gros_get_inode( disk, direntry->inode_num );
             filename = strtok( NULL, "/" );
         }
+        direntry = tmp;
     }
 //    free( filename );
     if( ! dir -> f_inode_num )
@@ -99,6 +103,7 @@ int gros_i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) 
     int        * diblock = NULL;     /* buffer to store indirects */
     int        * tiblock = NULL;     /* buffer to store indirects */
     Superblock * superblock = new Superblock(); /* reference to a superblock */
+    int          is_first;
 
     file_size = inode->f_size;
     // by default, the double indirect block we gros_read from is the one given in
@@ -120,12 +125,16 @@ int gros_i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) 
     n_indirects_sq  = n_indirects * n_indirects;
     // this is the file's n-th block that we will gros_read
     cur_block       = offset / block_size;
+    is_first        = 1;
 
     // while we have more bytes in the file to read and have not gros_read the
     // requested amount of bytes
     while( ( offset + bytes_read ) < file_size && bytes_read < size ) {
         // for this block, we either finish reading or gros_read the entire block
         bytes_to_read = std::min( size - bytes_read, block_size );
+        if ( is_first == 1 ) {
+            bytes_to_read = std::min( size, block_size - (offset % block_size) );
+        }
         // tmp var to store index into indirect blocks if necessary
         block_to_read = cur_block;
 
@@ -187,7 +196,12 @@ int gros_i_read( Disk * disk, Inode * inode, char * buf, int size, int offset ) 
         }
 
         gros_read_block( disk, block_to_read, data );
-        std::memcpy( buf + bytes_read, data, bytes_to_read );
+        if ( is_first == 1 ) {
+            std::memcpy( buf, data + (offset % block_size), bytes_to_read );
+            is_first = 0;
+        } else {
+            std::memcpy( buf + bytes_read, data, bytes_to_read );
+        }
         bytes_read += bytes_to_read;
 
         cur_block++;
@@ -241,6 +255,7 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
     int        * tiblock = NULL;       /* buffers to store indirects */
     Superblock * superblock = new Superblock(); /* reference to a superblock */
     Inode      * tosave;
+    int          is_first;
 
     file_size = inode->f_size;
     // by default, the double indirect block we gros_write to is the one given in the
@@ -267,11 +282,15 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
 
     // this is the file's n-th block that we will gros_write to
     cur_block      = offset / block_size;
+    is_first       = 1;
 
     // while we have more bytes to gros_write
     while( bytes_written < size ) {
         // for this block, we either finish writing or gros_write an entire block
         bytes_to_write = std::min( size - bytes_written, block_size );
+        if ( is_first == 1) {
+            bytes_to_write = std::min( size, block_size - (offset % block_size) );
+        }
         // tmp var to store index into indirect blocks if necessary
         block_to_write = cur_block;
 
@@ -469,7 +488,11 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
         if( bytes_to_write < block_size )
             gros_read_block( disk, block_to_write, data );
 
-        std::memcpy( data, buf + bytes_written, bytes_to_write );
+        if ( is_first == 1 ) {
+            std::memcpy( data + (offset % block_size), buf, bytes_to_write );
+        } else {
+            std::memcpy( data, buf + bytes_written, bytes_to_write );
+        }
         gros_write_block( disk, block_to_write, data );
         bytes_written += bytes_to_write;
 
@@ -479,11 +502,14 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
                     tosave->f_size,
                     // if we wrote past the end of the file
                     tosave->f_size - ( tosave->f_size % block_size ) +
-                    bytes_to_write
+                    bytes_to_write +
+                    (is_first == 1 ? (offset % block_size) : 0)
             );
+            inode->f_size = tosave->f_size;
             gros_save_inode( disk, tosave );
         }
 
+        is_first = 0;
         cur_block++;
     }
 
@@ -556,9 +582,9 @@ int gros_i_mknod( Disk * disk, Inode * inode, const char * filename ) {
     direntry->inode_num = new_file->f_inode_num;
     strcpy( direntry->filename, filename );
 
+    gros_save_inode( disk, new_file ) < 1 ? status = -1 : status;
     gros_i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
                   inode->f_size );
-    gros_save_inode( disk, new_file ) < 1 ? status = -1 : status;
 
     delete direntry;
     return status;
@@ -609,16 +635,16 @@ int gros_i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
     new_dir->f_acl = 0x3ed;
     inode->f_links  += 1;
 
+    // save directories back to disk
+    gros_save_inode( disk, inode ) < 0 ? status = -1 : status;
+    gros_save_inode( disk, new_dir ) < 0 ? status = -1 : status;
+
     // add new direntry to current directory
     gros_i_write( disk, inode, ( char * ) direntry, sizeof( DirEntry ),
                   inode->f_size );
 
     // add first entries to new directory
     gros_i_write( disk, new_dir, ( char * ) entries, 2 * sizeof( DirEntry ), 0 );
-
-    // save directories back to disk
-    gros_save_inode( disk, inode ) < 0 ? status = -1 : status;
-    gros_save_inode( disk, new_dir ) < 0 ? status = -1 : status;
 
     delete direntry;
     return status;
@@ -998,7 +1024,7 @@ int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
     // read DirEntries until current entry is found
     while( status && gros_i_read( disk, dir, ( char * ) cur_de, direntrysize, offset ) ) {
         offset += direntrysize;
-        if( cur_de == current ) {
+        if( ! strcmp(cur_de->filename, current->filename) ) {
             status = 0;
             if( gros_i_read( disk, dir, ( char * ) next_de, direntrysize, offset ) )
                 * result = next_de;
