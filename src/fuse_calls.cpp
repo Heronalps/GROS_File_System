@@ -128,7 +128,7 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
     	return -ENOENT;
     if ( !gros_is_dir( inode->f_acl ) )
     	return -ENOTDIR;
-    return inode -> f_block[0];
+    return 0;
 }
 
 // Return one or more directory entries (struct dirent) to the caller.
