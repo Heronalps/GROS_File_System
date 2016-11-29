@@ -11,6 +11,7 @@
 #include <cstring>
 #include <cstdio>
 #include <sys/stat.h>
+#include <errno.h>
 
 #define FILENAME_MAX_LENGTH 255
 

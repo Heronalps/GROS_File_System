@@ -113,10 +113,8 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
     int second_bit = ( ( inode->f_acl & 2 ) >> 1 );
     if ( first_bit == 0 || second_bit == 0 || size < 1 )
     	return -EINVAL;
-    if( ( inode == NULL || inode->f_links == 0 ) ) {
-//     	return -ENOENT;
-		return -1;
-    }
+    if( ( inode == NULL || inode->f_links == 0 ) ) 
+    	return -ENOENT;
     gros_i_read( mydata->disk, inode, buf, std::min( size, ( size_t )  inode->f_size  ), 0 );
     return std::min( ( int ) size, inode->f_size );
 }
@@ -126,10 +124,8 @@ int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_opendir" << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     Inode    * inode = gros_get_inode( mydata->disk, gros_namei( mydata->disk, path ) );
-    if ( inode == NULL || inode->f_links == 0) {
-//     	return -ENOENT;
-		return -1;
-    }
+    if ( inode == NULL || inode->f_links == 0) 
+    	return -ENOENT;
     if ( !gros_is_dir( inode->f_acl ) )
     	return -ENOTDIR;
     return inode -> f_block[0];
