@@ -393,7 +393,7 @@ int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
     pdebug << "reading " << size << " bytes from offset " << offset << " into file " << path << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
 
-    if( fi->fh != 0 )
+    if( fi->fh == 0 )
         fi->fh = ( uint64_t ) gros_namei( mydata->disk, path );
 
     return gros_i_read( mydata->disk, gros_get_inode( mydata->disk, ( int ) fi->fh ), buf,
@@ -407,7 +407,7 @@ int grosfs_write( const char * path, const char * buf, size_t size, off_t offset
     pdebug << "in grosfs_write" << std::endl;
     pdebug << "writing " << size << " bytes to offset " << offset << " into file " << path << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    if( fi->fh != 0 )
+    if( fi->fh == 0 )
         fi->fh = ( uint64_t ) gros_namei( mydata->disk, path );
 
     return gros_i_write( mydata->disk, gros_get_inode( mydata->disk, ( int ) fi->fh ),
