@@ -756,8 +756,8 @@ int gros_rmdir( Disk * disk, const char * path ) {
         return 0;
     }
 
-    strncpy( parent_path, path, ( size_t ) length + 1 );
-    parent_path[ length ] = '\0';
+    strncpy( parent_path, path, ( size_t ) length );
+    parent_path[ length-1 ] = '\0';
     parent_num = gros_namei( disk, parent_path );
 
     if (parent_num < 0) {
