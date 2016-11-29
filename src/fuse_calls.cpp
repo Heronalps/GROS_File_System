@@ -56,7 +56,7 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
 
 
 // As getattr, but called when fgetattr(2) is invoked by the user program.
-int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_info *fi ) {
+int grosfs_fgetattr( const char * path, struct stat * stbuf, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_fgetattr ( \"" << path << "\" )" << std::endl;
     return grosfs_getattr( path, stbuf );
 }
@@ -105,6 +105,167 @@ int grosfs_access( const char * path, int mask ) {
     return 0;
 }
 
+// Change the mode (permissions) of the given object to the given new permissions.
+// Only the permissions bits of mode should be examined. See chmod(2) for details.
+int grosfs_chmod( const char * path, mode_t mode ) {
+    pdebug << "in grosfs_chmod ( \"" << path << "\", " << mode << " ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    int inode_num = gros_namei( mydata->disk, path );
+    if( inode_num < 0 )
+        return -ENOENT;
+
+    Inode * inode = gros_get_inode( mydata->disk, inode_num );
+    gros_i_chmod( mydata->disk, inode, mode );
+    gros_save_inode( mydata->disk, inode );
+    return 0;
+}
+
+
+// Change the given object's owner and group to the provided values. See chown(2)
+// for details. NOTE: FUSE doesn't deal particularly well with file ownership,
+// since it usually runs as an unprivileged user and this call is restricted to
+// the superuser. It's often easier to pretend that all files are owned by the
+// user who mounted the filesystem, and to skip implementing this function.
+int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
+    pdebug << "in grosfs_chown ( \"" << path << "\", " << uid << ", " << gid << " ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    int inode_num = gros_namei( mydata->disk, path );
+    if( inode_num < 0 )
+        return -ENOENT;
+
+    Inode * inode = gros_get_inode( mydata->disk, inode_num );
+    inode->f_uid  = uid;
+    inode->f_gid  = gid;
+    gros_save_inode( mydata->disk, inode );
+    return 0;
+}
+
+
+// Create a hard link between "from" and "to". Hard links aren't required for a
+// working filesystem, and many successful filesystems don't support them.
+// If you do implement hard links, be aware that they have an effect on how
+// unlink works. See link(2) for details.
+int grosfs_link( const char * from, const char * to ) {
+    pdebug << "in grosfs_link ( " << from << ", " << to << " ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    return gros_copy( mydata->disk, from, to );
+
+}
+
+
+// Create a directory with the given name. The directory permissions are encoded
+// in mode. See mkdir(2) for details. This function is needed for any reasonable
+// read/write filesystem.
+int grosfs_mkdir( const char * path, mode_t mode ) {
+    pdebug << "in grosfs_mkdir ( \"" << path << "\", " << mode << " ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    if( grosfs_access( path, mode ) < 0 ) //TODO: do we need this?
+        return -EACCES;
+    return gros_mkdir( mydata->disk, path ) > 0 ? 0 : -1;
+}
+
+
+// Make a special (device) file, FIFO, or socket. See mknod(2) for details. This
+// function is rarely needed, since it's uncommon to make these objects inside
+// special-purpose filesystems.
+int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
+    pdebug << "in grosfs_mknod ( \"" << path << "\", " << mode << ", " << rdev << " ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    if( grosfs_access( path, mode ) < 0 ) //TODO: do we need this?
+        return -EACCES;
+
+    int inode_num = gros_mknod(mydata->disk, path);
+    if( inode_num < 0 ) return -EIO;
+    Inode * inode = gros_get_inode(mydata->disk, inode_num);
+    inode->f_acl  = 0; // regular file
+
+    gros_i_chmod( mydata->disk, inode, mode );
+
+    inode->f_atime = time(NULL);
+    inode->f_ctime = time(NULL);
+    inode->f_mtime = time(NULL);
+
+    gros_save_inode(mydata->disk, inode);
+    return 0;
+}
+
+
+// Open a directory for reading.
+int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
+    pdebug << "in grosfs_opendir" << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    Inode           * inode  = gros_get_inode( mydata->disk,
+                                               gros_namei( mydata->disk, path ) );
+
+    if( inode == NULL || inode->f_links == 0 ) return -ENOENT;
+    if( ! gros_is_dir( inode->f_acl ) ) return -ENOTDIR;
+    return 0;
+}
+
+
+// Open a file. If you aren't using file handles, this function should check for
+// existence and permissions and return either success or error code. If you use
+// file handles, you should also allocate any necessary structures and set fi->fh.
+// In addition, fi has some other fields that an advanced filesystem might find
+// useful; see the structure definition in fuse_common.h for very brief commentary.
+int grosfs_open( const char * path, struct fuse_file_info * fi ) {
+    pdebug << "in grosfs_open ( \"" << path << "\" ) " << std::endl;
+
+    int               inode_num;
+    int               mode   = 0;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    Inode           * inode  = NULL;
+
+    if( ( inode_num = gros_namei( mydata->disk, path ) ) > 0 )
+        inode = gros_get_inode( mydata->disk, inode_num );
+
+    // check if trying to open directory
+    if( gros_is_dir( inode->f_acl ) )
+        return -EISDIR;
+
+    if( ( inode != NULL && inode->f_links > 0 )
+        && fi->flags & ( O_CREAT | O_EXCL ) )
+        return -EEXIST;
+    else if( ( inode == NULL || inode->f_links == 0 )
+             && !( fi->flags & O_CREAT ) )
+        return -ENOENT;
+    else if( ( inode == NULL || inode->f_links == 0 )
+             && fi->flags & O_CREAT )
+        inode = gros_new_inode( mydata->disk );
+
+
+    if( fi->flags & O_RDONLY || fi->flags & O_RDWR )
+        mode |= R_OK;
+    if( fi->flags & O_WRONLY || fi->flags & O_TRUNC || fi->flags & O_RDWR )
+        mode |= W_OK;
+    if( grosfs_access( path, mode ) < 0 )
+        return -EACCES;
+    if( fi->flags & O_TRUNC )
+        gros_i_truncate( mydata->disk, inode, 0 );
+
+    fi->fh = ( uint64_t ) inode_num;
+    return 0;
+}
+
+
+// Read size bytes from the given file into the buffer buf, beginning offset
+// bytes into the file. See read(2) for full details. Returns the number of
+// bytes transferred, or 0 if offset was at or beyond the end of the file.
+// Required for any sensible filesystem.
+int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
+                 struct fuse_file_info * fi ) {
+
+    pdebug << "in grosfs_read" << std::endl;
+    pdebug << "reading " << size << " bytes from offset " << offset << " into file " << path << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+
+    if( fi->fh == 0 )
+        fi->fh = ( uint64_t ) gros_namei( mydata->disk, path );
+
+    return gros_i_read( mydata->disk, gros_get_inode( mydata->disk, ( int ) fi->fh ),
+                        buf, ( int ) size, ( int ) offset );
+}
+
 
 // If path is symbolic link, fill buf with its target, up to size. See readlink(2)
 // for how to handle a too-small buffer and for error codes. Not required if you
@@ -128,19 +289,6 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
 }
 
 
-// Open a directory for reading.
-int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_opendir" << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    Inode           * inode  = gros_get_inode( mydata->disk,
-                                               gros_namei( mydata->disk, path ) );
-
-    if( inode == NULL || inode->f_links == 0 ) return -ENOENT;
-    if( ! gros_is_dir( inode->f_acl ) ) return -ENOTDIR;
-    return 0;
-}
-
-
 //TODO check permissions
 // Return one or more directory entries (struct dirent) to the caller.
 // This is one of the most complex FUSE functions. It is related to, but not
@@ -159,8 +307,9 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
     int                   inode_num;
 
     // if we couldn't find the directory, error
-    if( ( inode_num = gros_namei( mydata->disk, path ) ) < 0 )
+    if( ( inode_num = gros_namei( mydata->disk, path ) ) < 0 ) {
         return -ENOENT;
+    }
 
     Inode    * inode = gros_get_inode( mydata->disk, inode_num );
     DirEntry * ent   = NULL; // the current direntry
@@ -188,59 +337,41 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 }
 
 
-// Make a special (device) file, FIFO, or socket. See mknod(2) for details. This
-// function is rarely needed, since it's uncommon to make these objects inside
-// special-purpose filesystems.
-int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
-    pdebug << "in grosfs_mknod ( \"" << path << "\", " << mode << ", " << rdev << " ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    if( grosfs_access( path, mode ) < 0 ) //TODO: do we need this?
-    	return -EACCES;
-
-    int inode_num = gros_mknod(mydata->disk, path);
-    if( inode_num < 0 ) return -EIO;
-    Inode * inode = gros_get_inode(mydata->disk, inode_num);
-    inode->f_acl  = 0; // regular file
-
-    gros_i_chmod( mydata->disk, inode, mode );
-
-    inode->f_atime = time(NULL);
-    inode->f_ctime = time(NULL);
-    inode->f_mtime = time(NULL);
-
-    gros_save_inode(mydata->disk, inode);
-    return 0;
-}
-
-
-// Create a directory with the given name. The directory permissions are encoded
-// in mode. See mkdir(2) for details. This function is needed for any reasonable
-// read/write filesystem.
-int grosfs_mkdir( const char * path, mode_t mode ) {
-    pdebug << "in grosfs_mkdir ( \"" << path << "\", " << mode << " ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    if( grosfs_access( path, mode ) < 0 ) //TODO: do we need this?
-    	return -EACCES;
-    return gros_mkdir( mydata->disk, path ) > 0 ? 0 : -1;
-}
-
-
-// Remove (delete) the given file, symbolic link, hard link, or special node.
-// Note that if you support hard links, unlink only deletes the data when the
-// last hard link is removed. See unlink(2) for details.
-int grosfs_unlink( const char * path ) {
-    pdebug << "in grosfs_unlink ( \"" << path << "\" ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    return gros_unlink( mydata->disk, path );
-}
-
-
 // Remove the given directory. This should succeed only if the directory is empty
 // (except for "." and ".."). See rmdir(2) for details.
 int grosfs_rmdir( const char * path ) {
     pdebug << "in grosfs_rmdir ( \"" << path << "\" ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
     return gros_rmdir( mydata->disk, path );
+}
+
+
+// Rename the file, directory, or other object "from" to the target "to". Note
+// that the source and target don't have to be in the same directory, so it
+// may be necessary to move the source to an entirely new directory. See rename(2)
+// for full details.
+int grosfs_rename( const char * from, const char * to ) {
+    pdebug << "in grosfs_rename ( " << from << ", " << to << " ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    return gros_frename( mydata->disk, from, to );
+}
+
+
+// This is the only FUSE function that doesn't have a directly corresponding
+// system call, although close(2) is related. Release is called when FUSE is
+// completely done with a file; at that point, you can free up any temporarily
+// allocated data structures. The IBM document claims that there is exactly one
+// release per open, but I don't know if that is true.
+int grosfs_release( const char * path, struct fuse_file_info * fi ) {
+    pdebug << "in grosfs_release ( \"" << path << "\" ) " << std::endl;
+    return 0; // leave unimplemented
+}
+
+
+// This is like release, except for directories.
+int grosfs_releasedir( const char * path, struct fuse_file_info * fi ) {
+    pdebug << "in grosfs_releasedir ( \"" << path << "\" ) " << std::endl;
+    return 0; // leave unimplemented
 }
 
 
@@ -279,64 +410,6 @@ int grosfs_symlink( const char * to, const char * from ) {
 }
 
 
-// Rename the file, directory, or other object "from" to the target "to". Note
-// that the source and target don't have to be in the same directory, so it
-// may be necessary to move the source to an entirely new directory. See rename(2)
-// for full details.
-int grosfs_rename( const char * from, const char * to ) {
-    pdebug << "in grosfs_rename ( " << from << ", " << to << " ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    return gros_frename( mydata->disk, from, to );
-}
-
-
-// Create a hard link between "from" and "to". Hard links aren't required for a
-// working filesystem, and many successful filesystems don't support them.
-// If you do implement hard links, be aware that they have an effect on how
-// unlink works. See link(2) for details.
-int grosfs_link( const char * from, const char * to ) {
-    pdebug << "in grosfs_link ( " << from << ", " << to << " ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    return gros_copy( mydata->disk, from, to );
-}
-
-
-// Change the mode (permissions) of the given object to the given new permissions.
-// Only the permissions bits of mode should be examined. See chmod(2) for details.
-int grosfs_chmod( const char * path, mode_t mode ) {
-    pdebug << "in grosfs_chmod ( \"" << path << "\", " << mode << " ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    int inode_num = gros_namei( mydata->disk, path );
-    if( inode_num < 0 )
-        return -ENOENT;
-
-    Inode * inode = gros_get_inode( mydata->disk, inode_num );
-    gros_i_chmod( mydata->disk, inode, mode );
-    gros_save_inode( mydata->disk, inode );
-    return 0;
-}
-
-
-// Change the given object's owner and group to the provided values. See chown(2)
-// for details. NOTE: FUSE doesn't deal particularly well with file ownership,
-// since it usually runs as an unprivileged user and this call is restricted to
-// the superuser. It's often easier to pretend that all files are owned by the
-// user who mounted the filesystem, and to skip implementing this function.
-int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
-    pdebug << "in grosfs_chown ( \"" << path << "\", " << uid << ", " << gid << " ) " << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    int inode_num = gros_namei( mydata->disk, path );
-    if( inode_num < 0 )
-        return -ENOENT;
-
-    Inode * inode = gros_get_inode( mydata->disk, inode_num );
-    inode->f_uid = uid;
-    inode->f_gid = gid;
-    gros_save_inode( mydata->disk, inode );
-    return 0;
-}
-
-
 // Truncate or extend the given file so that it is precisely size bytes long.
 // See truncate(2) for details. This call is required for read/write filesystems,
 // because recreating a file will first truncate it.
@@ -351,6 +424,16 @@ int grosfs_truncate( const char * path, off_t size ) {
 int grosfs_ftruncate( const char * path, off_t size, struct fuse_file_info * fi ) {
     pdebug << "in grosfs_ftruncate ( \"" << path << "\", " << size << " ) " << std::endl;
     return grosfs_truncate( path, size );
+}
+
+
+// Remove (delete) the given file, symbolic link, hard link, or special node.
+// Note that if you support hard links, unlink only deletes the data when the
+// last hard link is removed. See unlink(2) for details.
+int grosfs_unlink( const char * path ) {
+    pdebug << "in grosfs_unlink ( \"" << path << "\" ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    return gros_unlink( mydata->disk, path );
 }
 
 
@@ -371,67 +454,6 @@ int grosfs_utimens( const char * path, const struct timespec ts[ 2 ] ) {
 
     delete inode;
     return 0;
-}
-
-
-// Open a file. If you aren't using file handles, this function should check for
-// existence and permissions and return either success or error code. If you use
-// file handles, you should also allocate any necessary structures and set fi->fh.
-// In addition, fi has some other fields that an advanced filesystem might find
-// useful; see the structure definition in fuse_common.h for very brief commentary.
-int grosfs_open( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_open ( \"" << path << "\" ) " << std::endl;
-
-    int               inode_num;
-    int               mode   = 0;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-    Inode           * inode  = NULL;
-
-    inode_num = gros_namei( mydata->disk, path );
-    if( inode_num > 0 )
-        inode = gros_get_inode( mydata->disk, inode_num );
-
-    if( ( inode != NULL && inode->f_links > 0 )
-        && fi->flags & ( O_CREAT | O_EXCL ) )
-        return -EEXIST;
-    else if( ( inode == NULL || inode->f_links == 0 )
-             && !( fi->flags & O_CREAT ) )
-        return -ENOENT;
-    else if( ( inode == NULL || inode->f_links == 0 )
-               && fi->flags & O_CREAT )
-        inode = gros_new_inode( mydata->disk );
-
-
-    if( fi->flags & O_RDONLY || fi->flags & O_RDWR )
-        mode |= R_OK;
-    if( fi->flags & O_WRONLY || fi->flags & O_TRUNC || fi->flags & O_RDWR )
-        mode |= W_OK;
-    if( grosfs_access( path, mode ) < 0 )
-        return -EACCES;
-    if( fi->flags & O_TRUNC )
-        gros_i_truncate( mydata->disk, inode, 0 );
-
-    fi->fh = ( uint64_t ) inode_num;
-    return 0;
-}
-
-
-// Read size bytes from the given file into the buffer buf, beginning offset
-// bytes into the file. See read(2) for full details. Returns the number of
-// bytes transferred, or 0 if offset was at or beyond the end of the file.
-// Required for any sensible filesystem.
-int grosfs_read( const char * path, char * buf, size_t size, off_t offset,
-                 struct fuse_file_info * fi ) {
-
-    pdebug << "in grosfs_read" << std::endl;
-    pdebug << "reading " << size << " bytes from offset " << offset << " into file " << path << std::endl;
-    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
-
-    if( fi->fh == 0 )
-        fi->fh = ( uint64_t ) gros_namei( mydata->disk, path );
-
-    return gros_i_read( mydata->disk, gros_get_inode( mydata->disk, ( int ) fi->fh ),
-                        buf, ( int ) size, ( int ) offset );
 }
 
 
@@ -472,24 +494,6 @@ int grosfs_statfs( const char * path, struct statvfs * stbuf ) {
 
     delete sb;
     return 0;
-}
-
-
-// This is the only FUSE function that doesn't have a directly corresponding
-// system call, although close(2) is related. Release is called when FUSE is
-// completely done with a file; at that point, you can free up any temporarily
-// allocated data structures. The IBM document claims that there is exactly one
-// release per open, but I don't know if that is true.
-int grosfs_release( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_release ( \"" << path << "\" ) " << std::endl;
-    return 0; // leave unimplemented
-}
-
-
-// This is like release, except for directories.
-int grosfs_releasedir( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_releasedir ( \"" << path << "\" ) " << std::endl;
-    return 0; // leave unimplemented
 }
 
 

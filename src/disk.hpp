@@ -16,8 +16,8 @@
 
 typedef struct _disk {
     bool isnew;
-    int size;
-    int fd;
+    int  size;
+    int  fd;
 } Disk;
 
 /**

@@ -178,7 +178,6 @@ int gros_truncate( Disk * disk, const char * path, int size );
 int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
                     DirEntry ** result );
 
-
 /* @param Inode * dir       directory instance */
 DirEntry * gros_readdir( Disk * disk, Inode * dir );
 
@@ -214,12 +213,8 @@ int gros_i_copy( Disk * disk, Inode * from, Inode * todir, const char * name );
 int gros_copy( Disk * disk, const char * from, const char * to );
 
 int gros_i_stat( Disk * disk, int inode_num, struct stat * stbuf );
+
 int gros_i_chmod( Disk * disk, Inode * inode, mode_t mode );
 
-/*
-open/close: opens/closes a file
-chown: change file owner and group
-chmod: change file modes or Access Control Lists
-*/
 
 #endif
