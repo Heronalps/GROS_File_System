@@ -1108,10 +1108,10 @@ int gros_i_copy( Disk * disk, Inode * from, Inode * todir, const char * filename
 int gros_copy( Disk * disk, const char * from, const char * to ) {
     const char * filename = strrchr( to, '/' ) + 1;
     int          length   = ( int ) ( strlen( to ) - strlen( filename ) );
-    char       * dirname  = new char[length+1];
+    char       * dirname  = new char[length];
 
-    strncpy( dirname, to, ( size_t ) length + 1 );
-    dirname[length] = '\0';
+    strncpy( dirname, to, ( size_t ) length );
+    dirname[length-1] = '\0';
 
     int       from_inode_num = gros_namei( disk, from );
     int       to_dir         = gros_namei( disk, dirname );
