@@ -1127,7 +1127,7 @@ int gros_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
     short                 ftyp, usr, grp, uni;
     Inode               * inode;
     inode = gros_get_inode( disk, inode_num );
-    ftyp  = ( short ) ( ( inode->f_acl >> 9 ) & 0x5 );
+    ftyp  = ( short ) ( ( inode->f_acl >> 9 ) & 0x7 );
     usr   = ( short ) ( ( inode->f_acl >> 6 ) & 0x7 );
     grp   = ( short ) ( ( inode->f_acl >> 3 ) & 0x7 );
     uni   = ( short ) ( inode->f_acl & 0x7 );
@@ -1196,6 +1196,8 @@ int gros_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
 
 
 int gros_i_chmod( Disk * disk, Inode * inode, mode_t mode ) {
+    // keep file type in place
+    inode->f_acl = ( short ) ( inode->f_acl & (0x7 << 9) );
     // user
     inode->f_acl = ( short ) ( ( mode & S_IRUSR) ? inode->f_acl | (1 << 8) : inode->f_acl );
     inode->f_acl = ( short ) ( ( mode & S_IWUSR) ? inode->f_acl | (1 << 7) : inode->f_acl );
