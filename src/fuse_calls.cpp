@@ -106,14 +106,29 @@ int grosfs_access( const char * path, int mask ) {
 // requires only readlink and symlink. FUSE itself will take care of tracking
 // symbolic links in paths, so your path-evaluation code doesn't need to worry about it.
 int grosfs_readlink( const char * path, char * buf, size_t size ) {
-    pdebug << "in grosfs_readlink ( \"" << path << "\", " << buf << ", " << size << " ) " << std::endl;
-    return 0; // TODO this
+    pdebug << "in grosfs_readlink" << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    Inode    * inode = gros_get_inode( mydata->disk, gros_namei( mydata->disk, path ) );
+    int first_bit  = inode->f_acl & 1;
+    int second_bit = ( ( inode->f_acl & 2 ) >> 1 );
+    if ( first_bit == 0 || second_bit == 0 || size < 1 )
+    	return -EINVAL;
+    if( ( inode == NULL || inode->f_links == 0 ) ) 
+    	return -ENOENT;
+    gros_i_read( mydata->disk, inode, buf, std::min( size, ( size_t )  inode->f_size  ), 0 );
+    return std::min( ( int ) size, inode->f_size );
 }
 
 // Open a directory for reading.
 int grosfs_opendir( const char * path, struct fuse_file_info * fi ) {
-    pdebug << "in grosfs_opendir ( \"" << path << "\" ) " << std::endl;
-    return 0; // TODO what to do here?
+    pdebug << "in grosfs_opendir" << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    Inode    * inode = gros_get_inode( mydata->disk, gros_namei( mydata->disk, path ) );
+    if ( inode == NULL || inode->f_links == 0) 
+    	return -ENOENT;
+    if ( !gros_is_dir( inode->f_acl ) )
+    	return -ENOTDIR;
+    return inode -> f_block[0];
 }
 
 // Return one or more directory entries (struct dirent) to the caller.
@@ -168,6 +183,8 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
 int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
     pdebug << "in grosfs_mknod ( \"" << path << "\", " << mode << ", " << rdev << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    if( grosfs_access( path, mode ) < 0 ) //TODO: do we need this?
+    	return -EACCES;
 
     int inode_num = gros_mknod(mydata->disk, path);
     if (inode_num < 0)
@@ -191,6 +208,8 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
 int grosfs_mkdir( const char * path, mode_t mode ) {
     pdebug << "in grosfs_mkdir ( \"" << path << "\", " << mode << " ) " << std::endl;
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    if( grosfs_access( path, mode ) < 0 ) //TODO: do we need this?
+    	return -EACCES;
     return gros_mkdir( mydata->disk, path ) > 0 ? 0 : -1;
 }
 

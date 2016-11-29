@@ -586,6 +586,8 @@ int gros_i_mknod( Disk * disk, Inode * inode, const char * filename ) {
     DirEntry * direntry = new DirEntry();
     Inode    * new_file = gros_new_inode( disk );
     int        status   = 0;
+    if (!new_file)
+    	return -1;
 
     new_file->f_links   = 1;
     direntry->inode_num = new_file->f_inode_num;
@@ -612,7 +614,7 @@ int gros_mknod( Disk * disk, const char * path ) {
 
     // invalid path
     if( ! file )
-        return -1;
+        return -ENOENT;
 
 
     strncpy( new_path, path, strlen( path ) - strlen( file ) );
@@ -638,6 +640,8 @@ int gros_i_mkdir( Disk * disk, Inode * inode, const char * dirname ) {
     DirEntry * direntry = new DirEntry();
     Inode    * new_dir  = gros_new_inode( disk );
     int        status   = 0;
+    if (!new_dir)
+    	return -1;
 
     direntry->inode_num = new_dir->f_inode_num;
     strcpy( direntry->filename, dirname );
@@ -677,7 +681,7 @@ int gros_mkdir( Disk * disk, const char * path ) {
     const char * dir      = strrchr( path, '/' ); // get filename
 
     // invalid path
-    if( ! dir ) return -1;
+    if( ! dir ) return -ENOENT;
 
     dir += 1;  // skip over delimiter
 
