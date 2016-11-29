@@ -818,7 +818,6 @@ int gros_unlink( Disk * disk, const char * path ) {
     int          parent_num;
 
     strncpy( parent_path, path, ( size_t ) length + 1 );
-    parent_path[length] = '\0';
     parent_num = gros_namei( disk, parent_path );
 
     delete [] parent_path;
