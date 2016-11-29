@@ -51,6 +51,8 @@ int gros_namei( Disk * disk, const char * path ) {
         return 0;
     }
 
+    const char * target = strrchr( path, '/' ) + 1; // get filename this way
+
     // start at root
     dir      = gros_get_inode( disk, 0 );
     // parse name from path
@@ -64,13 +66,20 @@ int gros_namei( Disk * disk, const char * path ) {
         if( ! strcmp( direntry -> filename, filename ) ) {
             dir      = gros_get_inode( disk, direntry->inode_num );
             filename = strtok( NULL, "/" );
+            if (filename) {
+                gros_readdir_r( disk, dir, NULL, &direntry );
+            }
+        } else {
+            direntry = tmp;
         }
-        direntry = tmp;
     }
-//    free( filename );
-    if( ! dir -> f_inode_num )
+
+    if ( ! direntry ) return -1;
+    if ( ! strcmp( direntry->filename, target ) ) {
+        return dir->f_inode_num;
+    } else {
         return -1;
-    return dir -> f_inode_num;
+    }
 }
 
 
@@ -605,9 +614,10 @@ int gros_mknod( Disk * disk, const char * path ) {
     if( ! file )
         return -1;
 
-    file += 1; // skip over delimiter
 
-    strncpy( new_path, path, strlen( new_path ) );
+    strncpy( new_path, path, strlen( path ) - strlen( file ) );
+
+    file += 1; // skip over delimiter
     Inode * inode = gros_get_inode( disk, gros_namei( disk, new_path ) );
 
     delete [] new_path;
