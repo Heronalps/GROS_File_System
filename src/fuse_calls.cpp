@@ -116,7 +116,8 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
     if( ( inode == NULL || inode->f_links == 0 ) ) 
     	return -ENOENT;
     gros_i_read( mydata->disk, inode, buf, std::min( size, ( size_t )  inode->f_size  ), 0 );
-    return std::min( ( int ) size, inode->f_size );
+//    return std::min( ( int ) size, inode->f_size );
+    return 0;
 }
 
 // Open a directory for reading.
@@ -242,6 +243,7 @@ int grosfs_symlink( const char * to, const char * from ) {
     struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
 
     strncpy( dirname, from, ( size_t ) length + 1 );
+    dirname[length-1] = '\0';
 
     Inode    * from_dir = gros_get_inode( mydata->disk, gros_namei( mydata->disk, dirname ) );
     Inode    * inode    = gros_new_inode( mydata->disk );
@@ -252,10 +254,10 @@ int grosfs_symlink( const char * to, const char * from ) {
     direntry->inode_num = inode->f_inode_num;
     strcpy( direntry->filename, filename );
 
+    gros_save_inode( mydata->disk, inode );
     gros_i_write( mydata->disk, from_dir, ( char * ) direntry, sizeof( DirEntry ),
                   from_dir->f_size );
-    gros_save_inode( mydata->disk, inode );
-    gros_i_write( mydata->disk, inode, ( char * ) to, sizeof( to ), 0 );
+    gros_i_write( mydata->disk, inode, ( char * ) to, ( int ) strlen( to ), 0 );
 
     delete    direntry;
     delete [] dirname;
