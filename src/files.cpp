@@ -12,24 +12,24 @@
  *  @param Disk * disk   The disk containing the file system
  */
 void gros_mkroot( Disk * disk ) {
-    Inode  * root_i;
-    DirEntry root[ 2 ];
+    Inode    * root_i;
+    DirEntry   root[ 2 ];
 
     // get the zero-th inode to store the root dir in
     root_i          = gros_new_inode( disk ); // should be inode 0
-    // !! root_i->f_inode_num == 0 !!
     root_i->f_acl   = 0x3ed; // 01 111 100 100
     root_i->f_links = 2;
 
     root[ 0 ].inode_num = root_i->f_inode_num;
-    strncpy( root[ 0 ].filename, ".", strlen(".")+1 );
+    strncpy( root[ 0 ].filename, ".", strlen( "." ) + 1 );
 
     root[ 1 ].inode_num = root_i->f_inode_num;
-    strncpy( root[ 1 ].filename, "..", strlen(".")+1 );
+    strncpy( root[ 1 ].filename, "..", strlen( "." ) + 1 );
 
     gros_save_inode( disk, root_i );
-    gros_i_write( disk, root_i, ( char * ) &(root[0]), sizeof( DirEntry ), 0 );
-    gros_i_write( disk, root_i, ( char * ) &(root[1]), sizeof( DirEntry ), sizeof( DirEntry ) );
+    gros_i_write( disk, root_i, ( char * ) &( root[ 0 ] ), sizeof( DirEntry ), 0 );
+    gros_i_write( disk, root_i, ( char * ) &( root[ 1 ] ), sizeof( DirEntry ),
+                  sizeof( DirEntry ) );
 
     delete root_i;
 }
