@@ -210,7 +210,8 @@ int gros_i_copy( Disk * disk, Inode * from, Inode * todir, const char * name );
 /* @param char*  to     FULL path (from root "/") to the new copied file */
 int gros_copy( Disk * disk, const char * from, const char * to );
 
-int grosfs_i_stat( Disk * disk, int inode_num, struct stat * stbuf );
+int gros_i_stat( Disk * disk, int inode_num, struct stat * stbuf );
+int gros_i_chmod( Disk * disk, Inode * inode, mode_t mode );
 
 /*
 open/close: opens/closes a file

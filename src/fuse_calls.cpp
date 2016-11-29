@@ -48,7 +48,7 @@ int grosfs_getattr( const char * path, struct stat * stbuf ) {
     inode_num = gros_namei( mydata->disk, path );
     if( inode_num < 0 ) return -ENOENT;
 
-    return grosfs_i_stat(mydata->disk, inode_num, stbuf);
+    return gros_i_stat( mydata->disk, inode_num, stbuf );
 }
 
 // As getattr, but called when fgetattr(2) is invoked by the user program.
@@ -152,7 +152,7 @@ int grosfs_readdir( const char * path, void * buf, fuse_fill_dir_t filler,
             continue;
         }
         stbuf = new struct stat();
-        grosfs_i_stat(mydata->disk, ent->inode_num, stbuf);
+        gros_i_stat( mydata->disk, ent->inode_num, stbuf );
         // full will be 1 if the buffer is full
         full = filler( buf, ent->filename, stbuf, ( off_t ) off );
         // tmp is the new current entry
@@ -175,18 +175,7 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
     Inode * inode = gros_get_inode(mydata->disk, inode_num);
     inode->f_acl = 0; // regular file
 
-    // user
-    inode->f_acl = ( short ) ( ( mode & S_IRUSR) ? inode->f_acl | (1 << 8) : inode->f_acl );
-    inode->f_acl = ( short ) ( ( mode & S_IWUSR) ? inode->f_acl | (1 << 7) : inode->f_acl );
-    inode->f_acl = ( short ) ( ( mode & S_IXUSR) ? inode->f_acl | (1 << 6) : inode->f_acl );
-    // group
-    inode->f_acl = ( short ) ( ( mode & S_IRGRP) ? inode->f_acl | (1 << 5) : inode->f_acl );
-    inode->f_acl = ( short ) ( ( mode & S_IWGRP) ? inode->f_acl | (1 << 4) : inode->f_acl );
-    inode->f_acl = ( short ) ( ( mode & S_IXGRP) ? inode->f_acl | (1 << 3) : inode->f_acl );
-    // universe
-    inode->f_acl = ( short ) ( ( mode & S_IROTH) ? inode->f_acl | (1 << 2) : inode->f_acl );
-    inode->f_acl = ( short ) ( ( mode & S_IWOTH) ? inode->f_acl | (1 << 1) : inode->f_acl );
-    inode->f_acl = ( short ) ( ( mode & S_IXOTH) ? inode->f_acl | (1 << 0) : inode->f_acl );
+    gros_i_chmod( mydata->disk, inode, mode );
 
     inode->f_atime = time(NULL);
     inode->f_ctime = time(NULL);
@@ -282,6 +271,14 @@ int grosfs_link( const char * from, const char * to ) {
 // Only the permissions bits of mode should be examined. See chmod(2) for details.
 int grosfs_chmod( const char * path, mode_t mode ) {
     pdebug << "in grosfs_chmod ( \"" << path << "\", " << mode << " ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    int inode_num = gros_namei( mydata->disk, path );
+    if (inode_num < 0) {
+        return -ENOENT;
+    }
+    Inode * inode = gros_get_inode( mydata->disk, inode_num );
+    gros_i_chmod( mydata->disk, inode, mode );
+    gros_save_inode( mydata->disk, inode );
     return 0; // leave unimplemented
 }
 
@@ -293,6 +290,15 @@ int grosfs_chmod( const char * path, mode_t mode ) {
 // owned by the user who mounted the filesystem, and to skip implementing this function.
 int grosfs_chown( const char * path, uid_t uid, gid_t gid ) {
     pdebug << "in grosfs_chown ( \"" << path << "\", " << uid << ", " << gid << " ) " << std::endl;
+    struct fusedata * mydata = ( struct fusedata * ) fuse_get_context()->private_data;
+    int inode_num = gros_namei( mydata->disk, path );
+    if (inode_num < 0) {
+        return -ENOENT;
+    }
+    Inode * inode = gros_get_inode( mydata->disk, inode_num );
+    inode->f_uid = uid;
+    inode->f_gid = gid;
+    gros_save_inode( mydata->disk, inode );
     return 0; // leave unimplemented
 }
 

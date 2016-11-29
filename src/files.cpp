@@ -1123,7 +1123,7 @@ int gros_copy( Disk * disk, const char * from, const char * to ) {
     );
 }
 
-int grosfs_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
+int gros_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
     short                 ftyp, usr, grp, uni;
     Inode               * inode;
     inode = gros_get_inode( disk, inode_num );
@@ -1191,5 +1191,22 @@ int grosfs_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
     stbuf->st_blksize = BLOCK_SIZE;
 
     pdebug << "returning" << std::endl;
+    return 0;
+}
+
+
+int gros_i_chmod( Disk * disk, Inode * inode, mode_t mode ) {
+    // user
+    inode->f_acl = ( short ) ( ( mode & S_IRUSR) ? inode->f_acl | (1 << 8) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IWUSR) ? inode->f_acl | (1 << 7) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IXUSR) ? inode->f_acl | (1 << 6) : inode->f_acl );
+    // group
+    inode->f_acl = ( short ) ( ( mode & S_IRGRP) ? inode->f_acl | (1 << 5) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IWGRP) ? inode->f_acl | (1 << 4) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IXGRP) ? inode->f_acl | (1 << 3) : inode->f_acl );
+    // universe
+    inode->f_acl = ( short ) ( ( mode & S_IROTH) ? inode->f_acl | (1 << 2) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IWOTH) ? inode->f_acl | (1 << 1) : inode->f_acl );
+    inode->f_acl = ( short ) ( ( mode & S_IXOTH) ? inode->f_acl | (1 << 0) : inode->f_acl );
     return 0;
 }
