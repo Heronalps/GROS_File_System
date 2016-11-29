@@ -613,11 +613,10 @@ int gros_save_inode( Disk * disk, Inode * inode ) {
     int          rel_inode_index;
     int          status;
     char         buf[ BLOCK_SIZE ];
-    Superblock * superblock;
+    Superblock * superblock = new Superblock();
 
     // get data from superblock to calculate where inode should be
-    gros_read_block( disk, 0, ( char * ) buf );
-    superblock       = ( Superblock * ) buf;
+    gros_read_block( disk, 0, ( char * ) superblock );
     inode_num        = inode->f_inode_num;
     inodes_per_block = ( int ) floor( superblock->fs_block_size
                                       / superblock->fs_inode_size );
@@ -698,6 +697,12 @@ void gros_free_inode( Disk * disk, Inode * inode ) {
             if( done ) break;
         }
     }
+    inode->f_links = 0;
+    for( i = 0; i <= TRIPLE_INDRCT; i++ ) {
+        inode->f_block[i] = -1;
+    }
+    inode->f_size = 0;
+    gros_save_inode( disk, inode );
     // try to put inode number on free list
     gros_update_free_list( disk, inode->f_inode_num );
 }
