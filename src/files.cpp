@@ -265,6 +265,7 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
     Superblock * superblock = new Superblock(); /* reference to a superblock */
     Inode      * tosave;
     int          is_first;
+    int          min_size;
 
     file_size = inode->f_size;
     // by default, the double indirect block we gros_write to is the one given in the
@@ -456,9 +457,7 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
          * in which case we the rest of the calculation will evaluate to zeroes and
          * we don't need to be writing past the direct blocks.
          * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-        gros_i_ensure_size(
-                disk, inode,
-                ( // number of data blocks passed in triple indirects plus
+         min_size = ( // number of data blocks passed in triple indirects plus
                         std::max( ti_index, 0 ) * n_indirects_sq +
                         // number of data blocks passed in current double indirect plus
                         std::max( di_index, 0 ) * n_indirects +
@@ -471,9 +470,9 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
                         std::max( inode->f_block[ SINGLE_INDRCT ], 0 ) *
                         n_indirects +
                         // direct blocks
-                        std::min<int>( std::min( cur_block - 1, 0), SINGLE_INDRCT )
-                ) * block_size
-        );
+                        std::min<int>( std::max( cur_block, 0), SINGLE_INDRCT )
+                ) * block_size;
+        gros_i_ensure_size( disk, inode, min_size );
         tosave = gros_get_inode(disk, inode->f_inode_num);
 
         // we're in a single indirect block and the data block hasn't been allocated
@@ -505,18 +504,16 @@ int gros_i_write( Disk * disk, Inode * inode, char * buf, int size, int offset )
         gros_write_block( disk, block_to_write, data );
         bytes_written += bytes_to_write;
 
-        if( bytes_to_write < block_size ) {
-            tosave->f_size = std::max(
-                    // if we didn't gros_write to the end of the file
-                    tosave->f_size,
-                    // if we wrote past the end of the file
-                    tosave->f_size - ( tosave->f_size % block_size ) +
-                    bytes_to_write +
-                    (is_first == 1 ? (offset % block_size) : 0)
-            );
-            inode->f_size = tosave->f_size;
-            gros_save_inode( disk, tosave );
-        }
+        tosave->f_size = std::max(
+                // if we didn't gros_write to the end of the file
+                tosave->f_size,
+                // if we wrote past the end of the file
+                min_size + bytes_to_write +
+                (is_first == 1 ? (offset % block_size) : 0)
+        );
+        inode->f_size = tosave->f_size;
+
+        gros_save_inode( disk, tosave );
 
         is_first = 0;
         cur_block++;
