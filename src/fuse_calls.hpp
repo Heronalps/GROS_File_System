@@ -33,10 +33,6 @@
 #include "disk.hpp"
 #include "files.hpp"
 
-#ifdef HAVE_SETXATTR
-#include <sys/xattr.h>
-#endif
-
 struct fusedata {
     Disk * disk;
 };
@@ -151,16 +147,10 @@ int grosfs_lock( const char * path, struct fuse_file_info * fi, int cmd,
 // This function is similar to bmap(9). If the filesystem is backed by a block device, it converts blockno from a file-relative block number to a device-relative block. It isn't entirely clear how the blocksize parameter is intended to be used.
 int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno );
 
-#ifdef HAVE_SETXATTR
-// Set an extended attribute. See setxattr(2). This should be implemented only if HAVE_SETXATTR is true.
 int grosfs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags);
-
-// Read an extended attribute. See getxattr(2). This should be implemented only if HAVE_SETXATTR is true.
 int grosfs_getxattr(const char* path, const char* name, char* value, size_t size);
-
-// List the names of all extended attributes. See listxattr(2). This should be implemented only if HAVE_SETXATTR is true.
-int grosfs_listxattr(const char* path, const char* list, size_t size);
-#endif
+int grosfs_listxattr(const char* path, char* list, size_t size);
+int grosfs_removexattr(const char* path, const char* name);
 
 // Support the ioctl(2) system call. As such, almost everything is up to the filesystem. On a 64-bit machine, FUSE_IOCTL_COMPAT will be set for 32-bit ioctls. The size and direction of data is determined by _IOC_*() decoding of cmd. For _IOC_NONE, data will be NULL; for _IOC_WRITE data is being written by the user; for _IOC_READ it is being read, and if both are set the data is bidirectional. In all non-NULL cases, the area is _IOC_SIZE(cmd) bytes in size.
 int

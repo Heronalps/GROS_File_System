@@ -493,6 +493,23 @@ int grosfs_fsync( const char * path, int isdatasync, struct fuse_file_info * fi 
     return 0; // leave unimplemented
 }
 
+int grosfs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags) {
+    pdebug << "in grosfs_setxattr" << std::endl;
+    return -ENOSYS; // leave unimplemented
+}
+int grosfs_getxattr(const char* path, const char* name, char* value, size_t size) {
+    pdebug << "in grosfs_getxattr" << std::endl;
+    return -ENOSYS; // leave unimplemented
+}
+int grosfs_listxattr(const char* path, char* list, size_t size) {
+    pdebug << "in grosfs_listxattr" << std::endl;
+    return -ENOSYS; // leave unimplemented
+}
+int grosfs_removexattr(const char* path, const char* name) {
+    pdebug << "in grosfs_removexattr " << std::endl;
+    return -ENOSYS; // leave unimplemented
+}
+
 
 // Like fsync, but for directories.
 int grosfs_fsyncdir( const char * path, int isdatasync, struct fuse_file_info * fi ) {
@@ -617,27 +634,6 @@ int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
 }
 
 
-#ifdef HAVE_SETXATTR
-// Set an extended attribute. See setxattr(2). This should be implemented only if HAVE_SETXATTR is true.
-int grosfs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags) {
-    pdebug << "in grosfs_setxattr ( \"" << path << "\", " << name << ", " << value << ", " << size << ", " << flags << " ) " << std::endl;
-    return 0; // leave unimplemented
-}
-
-// Read an extended attribute. See getxattr(2). This should be implemented only if HAVE_SETXATTR is true.
-int grosfs_getxattr(const char* path, const char* name, char* value, size_t size) {
-    pdebug << "in grosfs_getxattr ( \"" << path << "\", " << name << ", " << value << ", " << size << " ) " << std::endl;
-    return 0; // leave unimplemented
-}
-
-// List the names of all extended attributes. See listxattr(2). This should be implemented only if HAVE_SETXATTR is true.
-int grosfs_listxattr(const char* path, const char* list, size_t size) {
-    pdebug << "in grosfs_listxattr" << std::endl;
-    return 0; // leave unimplemented
-}
-#endif
-
-
 // Support the ioctl(2) system call. As such, almost everything is up to the filesystem.
 // On a 64-bit machine, FUSE_IOCTL_COMPAT will be set for 32-bit ioctls.
 // The size and direction of data is determined by _IOC_*() decoding of cmd.
@@ -709,11 +705,10 @@ struct fuse_operations initfuseops() {
 	grosfs_oper.flush       = grosfs_flush;
 	grosfs_oper.release     = grosfs_release;
 	grosfs_oper.fsync       = grosfs_fsync;
-	#ifdef HAVE_SETXATTR
 	grosfs_oper.setxattr    = grosfs_setxattr;
 	grosfs_oper.getxattr    = grosfs_getxattr;
 	grosfs_oper.listxattr   = grosfs_listxattr;
-	#endif
+	grosfs_oper.removexattr = grosfs_removexattr;
 	grosfs_oper.opendir     = grosfs_opendir;
 	grosfs_oper.readdir     = grosfs_readdir;
 	grosfs_oper.releasedir  = grosfs_releasedir;
