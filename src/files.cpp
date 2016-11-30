@@ -26,7 +26,7 @@ void gros_mkroot( Disk * disk ) {
     strncpy( root[ 0 ].filename, ".", strlen(".")+1 );
 
     root[ 1 ].inode_num = root_i->f_inode_num;
-    strncpy( root[ 1 ].filename, "..", strlen(".")+1 );
+    strncpy( root[ 1 ].filename, "..", strlen("..")+1 );
 
     gros_save_inode( disk, root_i );
     gros_i_write( disk, root_i, ( char * ) &(root[0]), sizeof( DirEntry ), 0 );
