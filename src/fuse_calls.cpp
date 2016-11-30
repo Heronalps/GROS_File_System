@@ -283,7 +283,8 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
     	return -EINVAL;
     if( ( inode == NULL || inode->f_links == 0 ) ) 
     	return -ENOENT;
-    gros_i_read( mydata->disk, inode, buf, std::min( size, ( size_t )  inode->f_size  ), 0 );
+    gros_i_read( mydata->disk, inode, buf,
+                 ( int ) std::min( size, ( size_t )  inode->f_size  ), 0 );
 //    return std::min( ( int ) size, inode->f_size );
     return 0;
 }
@@ -638,13 +639,13 @@ int grosfs_bmap( const char * path, size_t blocksize, uint64_t * blockno ) {
 // Set an extended attribute. See setxattr(2). This should be implemented only if HAVE_SETXATTR is true.
 int grosfs_setxattr(const char* path, const char* name, const char* value, size_t size, int flags) {
     pdebug << "in grosfs_setxattr ( \"" << path << "\", " << name << ", " << value << ", " << size << ", " << flags << " ) " << std::endl;
-    return 0; // leave unimplemented
+    return ENOSYS; // leave unimplemented
 }
 
 // Read an extended attribute. See getxattr(2). This should be implemented only if HAVE_SETXATTR is true.
 int grosfs_getxattr(const char* path, const char* name, char* value, size_t size) {
     pdebug << "in grosfs_getxattr ( \"" << path << "\", " << name << ", " << value << ", " << size << " ) " << std::endl;
-    return 0; // leave unimplemented
+    return ENOSYS; // leave unimplemented
 }
 
 // List the names of all extended attributes. See listxattr(2). This should be implemented only if HAVE_SETXATTR is true.

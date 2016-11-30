@@ -151,6 +151,7 @@ void gros_fsck( Disk * disk ) {
         > superblock->fs_disk_size ) {
         perror( "Corrupt file system size" );
         // exit or request alternate superblock
+        free( allocd_blocks );
         exit( -1 );
     }
 
@@ -161,10 +162,12 @@ void gros_fsck( Disk * disk ) {
         // scan individual inodes in block
         for( j = 0; j < inodes_per_block; j++ ) {
             inode = ( ( Inode * ) buf ) + j;
-            links = gros_count_links( disk, inode, inode->f_inode_num, 0 );
             k     = 0;
             size  = 0;
             valid = 1;
+            // count links starting at root
+            links = gros_count_links( disk, gros_get_inode( disk, 0 ),
+                                      inode->f_inode_num, 0 );
 
             // check inode number in bounds, correct link count
             if( inode->f_inode_num < 1
@@ -240,43 +243,43 @@ void gros_fsck( Disk * disk ) {
                 else if( gros_is_dir( inode->f_acl ) ) {
                     Inode    * dir_node;
                     DirEntry * direntry;
-                    int        dir_num  = 0;
 
-                    // check first entry refers to own inode num,
-                    //  check second entry is valid parent,
-                    //  check there exists a path to it in the file system
-                    if( ! gros_readdir_r( disk, inode, NULL, &direntry ) ) {
-                        dir_num = direntry->inode_num;
-                        gros_readdir_r( disk, inode, direntry, &direntry );
+                    // check first entry refers to own inode
+                    gros_readdir_r( disk, inode, NULL, &direntry );
+                    if( ! direntry || strcmp( direntry->filename, "." ) != 0
+                        || direntry->inode_num != inode->f_inode_num
+                        || inode->f_links < 2 ) {
+                        perror( "Corrupt directory in file system" );
+                        free( allocd_blocks );
+                        exit( -1 );
                     }
-                    if( dir_num == inode->f_inode_num
-                        && gros_check_parent( disk,
-                                              direntry->inode_num,
-                                              inode->f_inode_num )
-                        && gros_count_links( disk, inode, inode->f_inode_num, 0 )
-                           > 1
-                        && inode->f_size > 0 ) {
+                    //  check second entry is inode parent and
+                    //  check there exists a path to it in the file system
+                    gros_readdir_r( disk, inode, direntry, &direntry );
+                    if( ! direntry || strcmp( direntry->filename, ".." ) != 0
+                        || ! gros_check_parent( disk, direntry->inode_num,
+                                                inode->f_inode_num )
+                        || inode->f_size < sizeof( DirEntry ) * 2 ) {
+                        perror( "Corrupt directory in file system" );
+                        free( allocd_blocks );
+                        exit( -1 );
+                    }
+                    // check for valid inodes in entries, or remove
+                    while( ! gros_readdir_r( disk, inode, direntry, &direntry ) ) {
+                        dir_node = gros_get_inode( disk, direntry->inode_num );
 
-                        // check for valid inodes in entries, or remove
-                        while( ! gros_readdir_r( disk, inode, direntry, &direntry ) ) {
-                            dir_node = gros_get_inode( disk, direntry->inode_num );
-                            if( inode->f_links < 1 || direntry->inode_num < 1
-                                || direntry->inode_num >= superblock->fs_num_inodes ) {
-                                if( gros_is_file( dir_node->f_acl ) )
-                                    gros_unlink( disk, gros_pwd( disk, inode,
-                                                                 direntry->filename ) );
-                                else if( gros_is_dir( dir_node->f_acl ) )
-                                    gros_rmdir( disk, gros_pwd( disk, inode,
-                                                                direntry->filename ) );
-                            }
-//                            else size += sizeof( DirEntry );
+                        if( direntry->inode_num >= superblock->fs_num_inodes
+                            || direntry->inode_num < 1 ) {
+                            if( gros_is_file( dir_node->f_acl ) )
+                                gros_unlink( disk, gros_pwd( disk, inode,
+                                                             direntry->filename ) );
+                            else if( gros_is_dir( dir_node->f_acl ) )
+                                gros_rmdir( disk, gros_pwd( disk, inode,
+                                                            direntry->filename ) );
                         }
                     }
                 }
             }
-            // check file size matches # bytes in inode
-//            if( inode->f_size != size )
-//                inode->f_size = size;
         } // done scanning all inodes in block
     } // done scanning all inode blocks
 
@@ -284,6 +287,7 @@ void gros_fsck( Disk * disk ) {
     if( superblock->fs_num_used_inodes + num_free_inodes
         > superblock->fs_num_inodes ) {
         perror( "Corrupt inodes in file system" );
+        free( allocd_blocks );
         exit( -1 );
     }
 
@@ -293,13 +297,13 @@ void gros_fsck( Disk * disk ) {
     if( superblock->fs_num_used_blocks + num_free_blocks
         > superblock->fs_num_blocks ) {
         perror( "Corrupt data blocks in file system" );
+        free( allocd_blocks );
         exit( -1 );
     }
     free( allocd_blocks );
 }
 
 
-// TODO test function, possible memory leaks
 /**
  * Finds path from root to inode, backwards
  *
@@ -313,18 +317,17 @@ const char * gros_pwd( Disk * disk, Inode * parent_dir, const char * filename ) 
     const char * path;
 
     path     = gros_get_path_to_root( disk, NULL, parent_dir );
-    filepath = ( char * ) calloc( strlen( path ) + strlen( filename ), 1 );
+    filepath = ( char * ) calloc( strlen( path ) + strlen( filename ) + 1, 1 );
     strncpy( filepath, path, strlen( path ) );
     strncat( filepath, filename, strlen( filename ) );
 
     path = filepath;
-    free( filepath );
+//    free( filepath );
 
     return path;
 }
 
 
-// TODO test function, possible memory leaks
 /**
  * Recursively traverse path back to root
  *
@@ -347,10 +350,8 @@ const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) 
     gros_readdir_r( disk, dir, dir_inode, &dir_inode );
 
     // allocate char array big enough for paths + slash + null terminator
-    path = ( char * ) calloc( strlen( filepath )
-                              + strlen( dir_inode->filename )
-                              + 2,
-                              sizeof( char ) );
+    path = ( char * ) calloc( strlen( filepath ) + strlen( dir_inode->filename )
+                              + 2, sizeof( char ) );
     strncpy( path, filepath, strlen( filepath ) );
     strncat( path, "/", 1 );
     strncat( path, dir_inode->filename, strlen( dir_inode->filename ) );
@@ -358,7 +359,7 @@ const char * gros_get_path_to_root( Disk * disk, char * filepath, Inode * dir ) 
     // recurse until root
     if( dir_inode->inode_num > 0 ) {
         // only add slash if not at root
-        strncat( path, ( char * ) "/", 1 );
+        strncat( path, "/", 1 );
         gros_get_path_to_root( disk, path,
                                gros_get_inode( disk, dir_inode->inode_num ) );
     }
@@ -400,7 +401,6 @@ int gros_check_parent( Disk * disk, int parent_num, int inode_num ) {
  * @param  int     links          The current number of links
  */
 int gros_count_links( Disk * disk, Inode * dir, int inode_num, int links ) {
-    int        dir_inode_num;
     Inode    * inode;
     DirEntry * direntry = NULL;
 
@@ -433,7 +433,6 @@ int gros_check_blocks( Disk * disk, int * allocd_blocks, int block_num ) {
     Superblock * superblock;
     int          i     = 0;
     int          valid = 0;
-    int          size  = 0;
 
     gros_read_block( disk, 0, buf );
     superblock = ( Superblock * ) buf;
@@ -573,11 +572,10 @@ Inode * gros_get_inode( Disk * disk, int inode_num ) {
     int           block_num;
     int           rel_inode_index;
     char          buf[ BLOCK_SIZE ];
-    Superblock  * superblock;
+    Superblock  * superblock = new Superblock();
     Inode       * ret_inode  = new Inode();
 
-    gros_read_block( disk, 0, ( char * ) buf );
-    superblock       = ( Superblock * ) buf;
+    gros_read_block( disk, 0, ( char * ) superblock );
     inodes_per_block = ( int ) floor( 1.0f * superblock->fs_block_size
                                       / superblock->fs_inode_size );
     block_num        = 1 + inode_num / inodes_per_block;
@@ -588,6 +586,7 @@ Inode * gros_get_inode( Disk * disk, int inode_num ) {
     std::memcpy( ret_inode,
                  &( block_inodes[ rel_inode_index ] ),
                  sizeof( Inode ) );
+
     delete superblock;
     return ret_inode;
 }
@@ -699,7 +698,6 @@ void gros_free_inode( Disk * disk, Inode * inode ) {
 }
 
 
-// TODO test function
 /**
  * Update free list with freed inode number, if space or higher inode numbers
  *

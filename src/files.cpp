@@ -62,18 +62,16 @@ int gros_namei( Disk * disk, const char * path ) {
     gros_readdir_r( disk, dir, NULL, &direntry);
     // traverse directory for filename in path
     while( direntry != NULL && filename ) {
-        gros_readdir_r( disk, dir, direntry, &tmp);
-        if( ! strcmp( direntry -> filename, filename ) ) {
-            dir      = gros_get_inode( disk, direntry->inode_num );
+        gros_readdir_r( disk, dir, direntry, &tmp );
+        if( !strcmp( direntry->filename, filename ) ) {
+            dir = gros_get_inode( disk, direntry->inode_num );
             filename = strtok( NULL, "/" );
-            if (filename) {
+            if( filename )
                 gros_readdir_r( disk, dir, NULL, &direntry );
-            }
-        } else {
+        } else
             direntry = tmp;
-        }
     }
-    if ( ! direntry || ! strcmp( direntry->filename, target ) )
+    if( !direntry || !strcmp( direntry->filename, target ) )
         return dir->f_inode_num;
     else
         return -1;
@@ -1045,10 +1043,12 @@ int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
     int         status       = 1;
     int         offset       = 0;
     int         direntrysize = sizeof( DirEntry );
-    DirEntry  * cur_de       = new DirEntry();
+    DirEntry  * cur_de;
     DirEntry  * next_de      = new DirEntry();
+//    TODO memleak
 
     if( ! current ) {
+        cur_de = new DirEntry();
         gros_i_read( disk, dir, ( char * ) cur_de, direntrysize, offset );
         * result = cur_de;
         status = 0;
@@ -1057,7 +1057,7 @@ int gros_readdir_r( Disk * disk, Inode * dir, DirEntry * current,
     // read DirEntries until current entry is found
     while( status && gros_i_read( disk, dir, ( char * ) cur_de, direntrysize, offset ) ) {
         offset += direntrysize;
-        if( ! strcmp(cur_de->filename, current->filename) ) {
+        if( !strcmp( cur_de->filename, current->filename ) ) {
             status = 0;
             if( gros_i_read( disk, dir, ( char * ) next_de, direntrysize, offset ) )
                 * result = next_de;
@@ -1162,7 +1162,7 @@ int gros_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
 
     stbuf->st_dev  = 0; // not used
     stbuf->st_rdev = 0; // not used;
-    stbuf->st_ino  = inode_num;
+    stbuf->st_ino  = ( __darwin_ino64_t ) inode_num;
     stbuf->st_uid  = ( uid_t ) inode->f_uid;
     stbuf->st_gid  = ( gid_t ) inode->f_gid;
 
