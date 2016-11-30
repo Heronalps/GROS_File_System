@@ -1162,7 +1162,7 @@ int gros_i_stat( Disk * disk, int inode_num, struct stat * stbuf ) {
 
     stbuf->st_dev  = 0; // not used
     stbuf->st_rdev = 0; // not used;
-    stbuf->st_ino  = ( __darwin_ino64_t ) inode_num;
+    stbuf->st_ino  = inode_num;
     stbuf->st_uid  = ( uid_t ) inode->f_uid;
     stbuf->st_gid  = ( gid_t ) inode->f_gid;
 
