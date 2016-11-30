@@ -606,15 +606,17 @@ int gros_i_mknod( Disk * disk, Inode * inode, const char * filename ) {
 
 
 int gros_mknod( Disk * disk, const char * path ) {
-    char        * new_path = new char[ strlen( path ) + 1 ];
+    char  * new_path = new char[ strlen( path ) + 1 ];
     const char  * file     = strrchr( path, '/' ); // get filename this way
+    int new_len;
 
     // invalid path
     if( ! file )
         return -ENOENT;
 
-
-    strncpy( new_path, path, strlen( path ) - strlen( file ) );
+    new_len = strlen( path ) - strlen ( file );
+    strncpy( new_path, path, new_len );
+    new_path[new_len] = '\0';
 
     file += 1; // skip over delimiter
     Inode * inode = gros_get_inode( disk, gros_namei( disk, new_path ) );
