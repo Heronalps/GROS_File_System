@@ -115,7 +115,8 @@ int grosfs_readlink( const char * path, char * buf, size_t size ) {
     	return -EINVAL;
     if( ( inode == NULL || inode->f_links == 0 ) ) 
     	return -ENOENT;
-    gros_i_read( mydata->disk, inode, buf, std::min( size, ( size_t )  inode->f_size  ), 0 );
+    gros_i_read( mydata->disk, inode, buf, std::min( size, ( size_t )  inode->f_size ), 0 );
+    buf[ inode->f_size ] = '\0';
 //    return std::min( ( int ) size, inode->f_size );
     return 0;
 }
