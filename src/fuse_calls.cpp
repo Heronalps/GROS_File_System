@@ -190,7 +190,7 @@ int grosfs_mknod( const char * path, mode_t mode, dev_t rdev ) {
 
     int inode_num = gros_mknod(mydata->disk, path);
     if (inode_num < 0)
-        return -EIO;
+        return inode_num;
     Inode * inode = gros_get_inode(mydata->disk, inode_num);
     inode->f_acl = 0; // regular file
 

@@ -619,6 +619,9 @@ int gros_mknod( Disk * disk, const char * path ) {
     new_path[new_len] = '\0';
 
     file += 1; // skip over delimiter
+    if ( strlen ( file ) > FILENAME_MAX_LENGTH) {
+        return -ENAMETOOLONG;
+    }
     Inode * inode = gros_get_inode( disk, gros_namei( disk, new_path ) );
 
     delete [] new_path;
