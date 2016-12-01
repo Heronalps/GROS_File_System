@@ -493,6 +493,7 @@ Inode * gros_find_free_inode( Disk * disk ) {
     if( i < SB_ILIST_SIZE ) {
         free_inode_index = superblock->free_inodes[ i ];
         superblock->free_inodes[ i ] = -1;
+        superblock->fs_num_used_inodes += 1;
 
         // repopulate free list if allocating last inode in list
         if( i == SB_ILIST_SIZE - 1 )
@@ -810,14 +811,12 @@ void gros_free_data_block( Disk * disk, int block_index ) {
  */
 int gros_allocate_data_block( Disk * disk ) {
     char         buf[ BLOCK_SIZE ];
-    char         sbbuf[ BLOCK_SIZE ];
     int          i;
     int          bitmap_index;
     int          block_num;
-    Superblock * superblock;
+    Superblock * superblock = new Superblock;
 
-    gros_read_block( disk, 0, ( char * ) sbbuf );
-    superblock = ( Superblock * ) sbbuf;
+    gros_read_block( disk, 0, ( char * ) superblock );
 
     for( i = 0; i < superblock->fs_num_block_groups; i++ ) {
         // block num for block group free list
@@ -830,6 +829,8 @@ int gros_allocate_data_block( Disk * disk ) {
             // mark the data block as not free
             gros_set_bit( bitmap, bitmap_index );
             gros_write_block( disk, block_num, buf );
+            superblock->fs_num_used_blocks++;
+            gros_write_block( disk, 0, ( char * ) superblock );
             return block_num + bitmap_index; // block num for free block
         }
     }
